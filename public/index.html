@@ -451,6 +451,7 @@ function render(d) {
 
   // Links
   let linksHtml = '';
+  linksHtml += '<a href="https://www.ponsfamily.com/launchpad/'+d.ca+'" target="_blank" class="tag-link badge-pons" style="padding:4px 10px;border-radius:6px;background:rgba(0,212,255,.12);color:#00d4ff;font-weight:600;border:1px solid rgba(0,212,255,.25)">⛽ Pons Launchpad</a>';
   if (d.verified) linksHtml += '<span class="badge badge-verified">✓ Verified</span>';
   else linksHtml += '<span class="badge badge-unverified">✗ Unverified</span>';
   if (d.ponsFee) linksHtml += '<span class="badge badge-pons">Fee '+d.ponsFee+' bps</span>';

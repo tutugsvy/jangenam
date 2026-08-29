@@ -8,6 +8,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --green: #22c55e;
+    --text2: #94a3b8;
+  }
+  .cursor { animation: blink 1s step-end infinite; color: var(--green); }
+  @keyframes blink { 50% { opacity: 0; } }
   body {
     font-family: 'Space Grotesk', sans-serif;
     background: #07070d;
@@ -16,10 +24,13 @@
     overflow-x: hidden;
   }
 
-  /* === VIDEO BACKGROUND === */
-  .hero-bg { position: fixed; inset: 0; z-index: 0; }
-  .hero-bg video { width: 100%; height: 100%; object-fit: cover; }
-  .hero-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 1; }
+  /* === MATRIX BACKGROUND === */
+  .hero-bg { position: fixed; inset: 0; z-index: 0; background: #04060a; }
+  .hero-bg canvas { width: 100%; height: 100%; display: block; }
+  .hero-overlay {
+    position: fixed; inset: 0; z-index: 1;
+    background: radial-gradient(ellipse 70% 55% at 50% 40%, rgba(4,6,10,.35) 0%, rgba(4,6,10,.82) 100%);
+  }
 
   /* === CONTENT WRAPPER === */
   .wrapper { position: relative; z-index: 2; max-width: 820px; margin: 0 auto; padding: 40px 16px 60px; }
@@ -226,9 +237,7 @@
 <body>
 
 <div class="hero-bg">
-  <video autoplay muted loop playsinline>
-    <source src="https://cdn.sceneai.art/Hero%20Section%20Video/adec243d-ffda-48cf-a8a8-26e6d6bcbe9b.mp4" type="video/mp4">
-  </video>
+  <canvas id="matrixCanvas"></canvas>
 </div>
 <div class="hero-overlay"></div>
 
@@ -238,7 +247,7 @@
     <h1 id="headingWrap">
       <span id="headingWords"></span>
     </h1>
-    <p id="tagline">Token intelligence for Robinhood Chain</p>
+    <p id="tagline"><span style="color:var(--accent)">$</span> <span style="color:var(--text2)">./ponscan</span> <span style="color:var(--green)">--scan</span> <span style="color:var(--accent2)">0x...</span><span class="cursor" id="cursor">_</span></p>
   </header>
 
   <div class="search-box" id="searchBox">
@@ -453,6 +462,49 @@ function render(d) {
 
 function showError(msg) { $('#error').textContent = '⚠ '+msg; $('#error').classList.add('active'); }
 function hideError() { $('#error').classList.remove('active'); }
+
+// === MATRIX RAIN BACKGROUND ===
+(function() {
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+  const glyphs = '01アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789abcdefABCDEF$#@%&*+=<>/\\[]{}:;?';
+  const fontSize = 16;
+  let cols = 0, drops = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.floor(canvas.width / fontSize);
+    drops = Array(cols).fill(1).map(() => Math.random() * -50);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function draw() {
+    ctx.fillStyle = 'rgba(4,6,10,0.08)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fontSize + 'px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const char = glyphs[Math.floor(Math.random() * glyphs.length)];
+      const x = i * fontSize;
+      const y = drops[i] * fontSize;
+      // lead char bright cyan, trail dimmer
+      const isHead = Math.random() < 0.1;
+      if (isHead) {
+        ctx.fillStyle = 'rgba(0,212,255,0.9)';
+        ctx.shadowColor = 'rgba(0,212,255,0.6)';
+        ctx.shadowBlur = 8;
+      } else {
+        ctx.fillStyle = 'rgba(34,197,94,0.35)';
+        ctx.shadowBlur = 0;
+      }
+      ctx.fillText(char, x, y);
+      if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw, 50);
+})();
 
 // === START ANIMATION ===
 if (document.readyState === 'complete') animate();

@@ -37,6 +37,8 @@ export function renderResult(d) {
   document.getElementById('ovLiq2').textContent = formatPrice(d.dex?.liquidity);
   document.getElementById('ovHolders').textContent = d.holderCount || '--';
   document.getElementById('ovHolders2').textContent = d.holderCount || '--';
+  document.getElementById('ovSmart').textContent = d.smartWallets != null ? d.smartWallets : '--';
+  document.getElementById('ovRenowned').textContent = d.renownedWallets != null ? d.renownedWallets : '--';
   document.getElementById('ovVol').textContent = formatPrice(d.dex?.volume24h);
   const chEl = document.getElementById('ovChange');
   if (d.dex?.priceChange24h != null) {
@@ -124,6 +126,9 @@ export function renderDevTab(d) {
     '<div><div class="card-label">Wallet</div><div class="addr" onclick="copyText(\'' + d.dev + '\')">' + shorten(d.dev) + ' <span class="copy">📋</span></div></div>' +
     '<div><div class="card-label">Type</div><div class="card-value small">' + (d.devIsContract ? 'Contract' : 'EOA') + '</div></div>' +
     '<div><div class="card-label">Label</div><div class="card-value small">' + (d.devLabel || '--') + '</div></div>' +
+    '<div><div class="card-label">Status</div><div class="card-value small">' + (d.creatorTokenStatus === 'creator_close' ? '<span class="badge badge-green">● Exited</span>' : d.creatorTokenStatus === 'creator_hold' ? '<span class="badge badge-yellow">● Still holding</span>' : '--') + '</div></div>' +
+    (d.creatorOpenCount > 0 ? '<div><div class="card-label">Tokens Launched</div><div class="card-value small">' + d.creatorOpenCount + '</div></div>' : '') +
+    (d.ctoFlag ? '<div><div class="card-label">Community Takeover</div><div class="card-value small"><span class="badge badge-yellow">⚠ CTO</span></div></div>' : '') +
     '<div><div class="card-label">ETH Balance</div><div class="card-value small">' + (d.devEthBalance || '0') + ' ETH</div></div>' +
     '<div><div class="card-label">Token Balance</div><div class="card-value small">' + (d.devBalanceFormatted ? d.devBalanceFormatted : '0') + ' ' + (d.symbol || '') + '</div></div>' +
     '<div><div class="card-label">Token Worth</div><div class="card-value small">' + (d.devWorthUsd || '$0.00') + '</div></div>';
@@ -184,8 +189,12 @@ export function renderHoldersTab(d) {
   }).join('');
   const topPct = parseFloat(holders[0]?.percentage) || 0;
   summary.innerHTML =
-    '<div class="info-row"><span class="label">Total Holders</span><span class="value">' + d.holderCount + '</span></div>' +
+    '<div class="info-row"><span class="label">Total Holders</span><span class="value">' + (d.holderCount || '--') + '</span></div>' +
     '<div class="info-row"><span class="label">Top 1 Holder</span><span class="value">' + topPct.toFixed(1) + '%</span></div>' +
+    (d.smartWallets != null ? '<div class="info-row"><span class="label">Smart Money</span><span class="value">' + d.smartWallets + '</span></div>' : '') +
+    (d.renownedWallets != null ? '<div class="info-row"><span class="label">KOL Wallets</span><span class="value">' + d.renownedWallets + '</span></div>' : '') +
+    (d.sniperWallets != null && d.sniperWallets > 0 ? '<div class="info-row"><span class="label">Snipers</span><span class="value" style="color:var(--yellow)">' + d.sniperWallets + '</span></div>' : '') +
+    (d.bundlerWallets != null && d.bundlerWallets > 0 ? '<div class="info-row"><span class="label">Bundlers</span><span class="value" style="color:var(--red)">' + d.bundlerWallets + '</span></div>' : '') +
     (topPct > 50 ? '<div class="info-row"><span class="label">Concentration Risk</span><span class="value" style="color:var(--yellow)">⚠ High</span></div>' : '<div class="info-row"><span class="label">Concentration Risk</span><span class="value" style="color:var(--green)">● Low</span></div>');
 }
 
@@ -193,21 +202,23 @@ export function renderHoldersTab(d) {
 export function renderContractTab(d) {
   const details = document.getElementById('contractDetails');
   const fee = document.getElementById('ponsFee');
+  const buyTax = d.buyTax != null ? Number(d.buyTax) : null;
+  const sellTax = d.sellTax != null ? Number(d.sellTax) : null;
   details.innerHTML =
     '<div class="info-row" style="padding:6px 0"><span class="label">Verified</span><span class="value">' + (d.verified ? '<span class="badge badge-green">✓ Verified</span>' : '<span class="badge badge-yellow">✗ Unverified</span>') + '</span></div>' +
+    '<div class="info-row" style="padding:6px 0"><span class="label">Ownership</span><span class="value">' + (d.renounced === true ? '<span class="badge badge-green">✓ Renounced</span>' : d.renounced === false ? '<span class="badge badge-red">✗ Active</span>' : '<span class="badge badge-outline">—</span>') + '</span></div>' +
+    (d.isHoneypot != null ? '<div class="info-row" style="padding:6px 0"><span class="label">Honeypot</span><span class="value">' + (d.isHoneypot ? '<span class="badge badge-red">⚠ Detected</span>' : '<span class="badge badge-green">✓ Not detected</span>') + '</span></div>' : '') +
+    (d.isBlacklist != null ? '<div class="info-row" style="padding:6px 0"><span class="label">Blacklist</span><span class="value">' + (d.isBlacklist ? '<span class="badge badge-red">⚠ Yes</span>' : '<span class="badge badge-green">✓ Not detected</span>') + '</span></div>' : '') +
+    (d.isWashTrading ? '<div class="info-row" style="padding:6px 0"><span class="label">Wash Trading</span><span class="value"><span class="badge badge-red">⚠ Detected</span></span></div>' : '') +
+    (d.rugRatio != null ? '<div class="info-row" style="padding:6px 0"><span class="label">Rug Risk</span><span class="value">' + (d.rugRatio > 0.3 ? '<span class="badge badge-red">⚠ High</span>' : d.rugRatio > 0.1 ? '<span class="badge badge-yellow">⚠ Medium</span>' : '<span class="badge badge-green">✓ Low</span>') + '</span></div>' : '') +
     '<div class="info-row" style="padding:6px 0"><span class="label">Code Size</span><span class="value">' + (d.codeSize ? d.codeSize + ' bytes' : '--') + '</span></div>' +
     '<div class="info-row" style="padding:6px 0"><span class="label">Implementation</span><span class="addr" style="font-size:11px">' + (d.implementation ? shorten(d.implementation) : 'None') + '</span></div>' +
     '<div class="info-row" style="padding:6px 0"><span class="label">Has Code</span><span class="value">' + (d.hasCode ? '<span class="badge badge-green">✓ Yes</span>' : '<span class="badge badge-red">✗ No</span>') + '</span></div>' +
     (d.deployInfo ? '<div class="info-row" style="padding:6px 0"><span class="label">Deploy Block</span><span class="value">#' + d.deployInfo.deployBlock + '</span></div>' : '') +
     (d.deployInfo && d.deployInfo.deployTx ? '<div class="info-row" style="padding:6px 0"><span class="label">Deploy Tx</span><span class="addr" style="font-size:11px" onclick="copyText(\'' + d.deployInfo.deployTx + '\')">' + shorten(d.deployInfo.deployTx) + ' <span class="copy">📋</span></span></div>' : '');
-  if (d.ponsFee) {
-    fee.innerHTML =
-      '<div class="info-row"><span class="label">Buy Fee</span><span class="value">' + (d.ponsFee.buy ? d.ponsFee.buy + '%' : '0%') + '</span></div>' +
-      '<div class="info-row"><span class="label">Sell Fee</span><span class="value">' + (d.ponsFee.sell ? d.ponsFee.sell + '%' : '0%') + '</span></div>';
-  } else {
-    fee.innerHTML = '<div class="info-row"><span class="label">Buy Fee</span><span class="value">0%</span></div>' +
-      '<div class="info-row"><span class="label">Sell Fee</span><span class="value">0%</span></div>';
-  }
+  fee.innerHTML =
+    '<div class="info-row"><span class="label">Buy Tax</span><span class="value">' + (buyTax != null ? buyTax + '%' : '0%') + '</span></div>' +
+    '<div class="info-row"><span class="label">Sell Tax</span><span class="value">' + (sellTax != null ? sellTax + '%' : '0%') + '</span></div>';
 }
 
 // ---- SOCIALS TAB ----

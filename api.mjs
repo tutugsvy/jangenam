@@ -4,6 +4,8 @@ import { parse } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { join, extname } from 'path';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
+import { createHash } from 'crypto';
 
 const __dirname_ish = fileURLToPath(new URL('.', import.meta.url));
 
@@ -13,6 +15,7 @@ const BS = 'https://robinhoodchain.blockscout.com';
 const BLOCKSCOUT = `${BS}/api`;
 const BLOCKSCOUT_V2 = `${BS}/api/v2`;
 const RHSCAN = 'https://rh-scan.com';
+const GGMN_CLI = 'gmgn-cli'; // resolves via PATH
 
 const client = createPublicClient({ transport: http(RH, { timeout: 10000 }) });
 
@@ -35,6 +38,87 @@ async function cachedScan(ca) {
 
 function bsFetch(url) {
   return fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } });
+}
+
+// ===== GMGN integration (on-chain, real-time — primary tracker source) =====
+// gmgn-cli with --raw returns single-line JSON. Spawn is ~0.5-1.5s per call;
+// mitigated by the 5-min scan cache. info(weight1) + security(weight1) per scan.
+function gmgnRaw(args, timeout = 20000) {
+  return new Promise((resolve) => {
+    execFile(GGMN_CLI, [...args, '--raw'], { timeout, maxBuffer: 8 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        try { resolve(JSON.parse(stdout)); }
+        catch { resolve(null); }
+      });
+  });
+}
+
+// Fetch token info + security from GMGN (robinhood chain). Returns normalized object or null.
+async function gmgnToken(ca) {
+  const chain = 'robinhood';
+  const [info, security] = await Promise.all([
+    gmgnRaw(['token', 'info', '--chain', chain, '--address', ca]),
+    gmgnRaw(['token', 'security', '--chain', chain, '--address', ca]),
+  ]);
+  if (!info && !security) return null;
+
+  const price = info?.price?.price ? parseFloat(info.price.price) : null;
+  const circ = info?.circulating_supply ? parseFloat(info.circulating_supply) : null;
+  const mcap = price != null && circ != null ? price * circ : null;
+  const p24h = info?.price?.price_24h ? parseFloat(info.price.price_24h) : null;
+  const p1h = info?.price?.price_1h ? parseFloat(info.price.price_1h) : null;
+
+  return {
+    // Market
+    priceUsd: price,
+    mcap,                                    // price × circulating_supply
+    liquidity: info?.liquidity != null ? parseFloat(info.liquidity) : null,
+    volume24h: info?.price?.volume_24h != null ? parseFloat(info.price.volume_24h) : null,
+    change24h: price != null && p24h != null ? ((price - p24h) / p24h) * 100 : null,
+    change1h: price != null && p1h != null ? ((price - p1h) / p1h) * 100 : null,
+    logo: info?.logo || null,
+    dexUrl: info?.link?.gmgn || null,
+    exchange: info?.pool?.exchange || null,
+    quoteSymbol: info?.pool?.quote_symbol || null,
+    poolAddress: info?.pool?.pool_address || null,
+    // Token
+    name: info?.name || null,
+    symbol: info?.symbol || null,
+    holderCount: info?.holder_count != null ? info.holder_count : null,
+    totalSupply: info?.total_supply != null ? String(info.total_supply) : null,
+    creationTs: info?.creation_timestamp || null,
+    openTs: info?.open_timestamp || null,
+    // Dev
+    creatorAddress: info?.dev?.creator_address || null,
+    creatorTokenStatus: info?.dev?.creator_token_status || null,
+    creatorOpenCount: info?.dev?.creator_open_count || 0,
+    twitterCreateTokenCount: info?.dev?.twitter_create_token_count || 0,
+    ctoFlag: info?.dev?.cto_flag || 0,
+    dexscrUpdateLink: info?.dev?.dexscr_update_link || 0,
+    dexscrAd: info?.dev?.dexscr_ad || 0,
+    athTokenInfo: info?.dev?.ath_token_info || null,
+    // Social
+    twitter: info?.link?.twitter_username || null,
+    website: info?.link?.website || null,
+    telegram: info?.link?.telegram || null,
+    // Wallet tags
+    smartWallets: info?.wallet_tags_stat?.smart_wallets || 0,
+    renownedWallets: info?.wallet_tags_stat?.renowned_wallets || 0,
+    sniperWallets: info?.wallet_tags_stat?.sniper_wallets || 0,
+    bundlerWallets: info?.wallet_tags_stat?.bundler_wallets || 0,
+    // Security
+    verified: security?.open_source === 1 || security?.is_open_source === true,
+    renounced: security?.renounced === 1 || security?.is_renounced === true,
+    honeypot: security?.honeypot === 1 || security?.is_honeypot === true,
+    blacklist: security?.blacklist === 1 || security?.is_blacklist === true,
+    buyTax: security?.buy_tax != null ? parseFloat(security.buy_tax) * 100 : null, // 0.03 → 3%
+    sellTax: security?.sell_tax != null ? parseFloat(security.sell_tax) * 100 : null,
+    burnStatus: security?.burn_status || null,
+    top10HolderRate: security?.top_10_holder_rate != null ? parseFloat(security.top_10_holder_rate) : null,
+    isWashTrading: !!security?.is_wash_trading,
+    rugRatio: security?.rug_ratio != null ? parseFloat(security.rug_ratio) : null,
+  };
 }
 
 // 4-byte selectors
@@ -403,7 +487,7 @@ async function scan(ca) {
 
   // 6-14: Everything else in parallel
   tic('rest');
-  const [holders, fee, pair, dex, xHandles, ponsIcon, devProfileData, devActivity] = await Promise.all([
+  const [holders, fee, pair, dex, xHandles, ponsIcon, devProfileData, devActivity, gmgn] = await Promise.all([
     (async () => {
       let h = await bsHolders(ca);
       if (!h) h = await bsHoldersV1(ca);
@@ -416,8 +500,84 @@ async function scan(ca) {
     ponsLogo(ca),
     dev ? devProfile(dev) : Promise.resolve(null),
     dev ? traceDevActivity(ca, dev, Number(result.decimals || 18), null, result.symbol) : Promise.resolve(null),
+    gmgnToken(ca), // GMGN = primary on-chain tracker
   ]);
   toc('rest');
+
+  // === GMGN merge (primary source, DexScreener stays as fallback) ===
+  if (gmgn) {
+    result.gmgn = gmgn;
+    // Market data — prefer GMGN (realtime on-chain); fallback to DexScreener
+    const gmgnDex = {
+      priceUsd: gmgn.priceUsd != null ? String(gmgn.priceUsd) : (dex?.priceUsd || null),
+      fdv: gmgn.mcap ?? dex?.fdv ?? null,
+      liquidity: gmgn.liquidity ?? dex?.liquidity ?? null,
+      volume24h: gmgn.volume24h ?? dex?.volume24h ?? null,
+      priceChange24h: gmgn.change24h ?? dex?.priceChange24h ?? null,
+      priceChange1h: gmgn.change1h ?? null,
+      pair: (result.symbol || '') + '/' + (gmgn.quoteSymbol || ''),
+      dexUrl: gmgn.dexUrl || dex?.dexUrl || null,
+      exchange: gmgn.exchange || dex?.pair || null,
+      poolAddress: gmgn.poolAddress || null,
+    };
+    result.dex = gmgnDex;
+    // Token-level
+    if (gmgn.holderCount != null) result.holderCount = gmgn.holderCount;
+    if (gmgn.totalSupply != null && result.totalSupply == null) result.totalSupply = gmgn.totalSupply;
+    if (gmgn.creationTs != null && !result.deployInfo) {
+      result.deployInfo = { ...(result.deployInfo || {}), gmgnCreatedAt: gmgn.creationTs };
+    }
+    // Dev — GMGN creator as authoritative dev
+    if (gmgn.creatorAddress && isAddress(gmgn.creatorAddress)) {
+      const gAddr = getAddress(gmgn.creatorAddress);
+      if (!dev) {
+        dev = gAddr;
+        result.dev = gAddr;
+        result.devLabel = 'gmgn-creator';
+        const gCode = await getCode(gAddr);
+        result.devIsContract = gCode && gCode.length > 4;
+      } else if (dev.toLowerCase() === gAddr.toLowerCase()) {
+        // confirmed match; keep existing label
+      } else {
+        // GMGN knows a different creator — prefer GMGN's (authoritative on-chain label)
+        dev = gAddr;
+        result.dev = gAddr;
+        result.devLabel = 'gmgn-creator';
+        const gCode = await getCode(gAddr);
+        result.devIsContract = gCode && gCode.length > 4;
+      }
+    }
+    result.creatorTokenStatus = gmgn.creatorTokenStatus || null; // hold / close
+    result.creatorOpenCount = gmgn.creatorOpenCount || 0;
+    result.ctoFlag = gmgn.ctoFlag || 0;
+    result.athTokenInfo = gmgn.athTokenInfo || null;
+    // Social — GMGN link is authoritative
+    if (gmgn.twitter) result.xHandles = [gmgn.twitter];
+    result.social = {
+      twitter: gmgn.twitter,
+      website: gmgn.website,
+      telegram: gmgn.telegram,
+    };
+    // Security
+    result.verified = gmgn.verified ?? result.verified;
+    result.renounced = gmgn.renounced ?? null;
+    result.isHoneypot = gmgn.honeypot ?? null;
+    result.isBlacklist = gmgn.blacklist ?? null;
+    result.buyTax = gmgn.buyTax;
+    result.sellTax = gmgn.sellTax;
+    result.burnStatus = gmgn.burnStatus || null;
+    result.top10HolderRate = gmgn.top10HolderRate;
+    result.isWashTrading = gmgn.isWashTrading;
+    result.rugRatio = gmgn.rugRatio;
+    // Wallet tags / smart money
+    result.smartWallets = gmgn.smartWallets;
+    result.renownedWallets = gmgn.renownedWallets;
+    result.sniperWallets = gmgn.sniperWallets;
+    result.bundlerWallets = gmgn.bundlerWallets;
+    // Logo
+    if (gmgn.logo) result.tokenIcon = gmgn.logo;
+  }
+  if (result.verified == null) result.verified = result.blockscout?.verified || false;
 
   // Process holders
   if (holders.length) {
@@ -427,13 +587,15 @@ async function scan(ca) {
       percentage: result.totalSupply && h.value ?
         formatTokenAmount(BigInt(h.value) * 10000n / BigInt(result.totalSupply) * 100n, 4) + '%' : null,
     }));
-    result.holderCount = holders.length;
+    // Don't overwrite GMGN's holderCount (which is the real on-chain count)
+    if (!result.holderCount) result.holderCount = holders.length;
   }
   result.ponsFee = fee;
   result.v2Pair = pair;
-  result.dex = dex;
-  result.xHandles = xHandles;
-  result.tokenIcon = ponsIcon || result.blockscout?.iconUrl || null;
+  // GMGN is the primary source — only fall back to DexScreener/other when GMGN is missing
+  if (!result.dex) result.dex = dex;
+  if (!result.xHandles || !result.xHandles.length) result.xHandles = xHandles;
+  if (!result.tokenIcon) result.tokenIcon = ponsIcon || result.blockscout?.iconUrl || null;
 
   // Dev profile: funding, holdings, eth balance via rh-scan
   if (devProfileData) {

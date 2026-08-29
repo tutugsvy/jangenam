@@ -568,6 +568,8 @@ body::after{
               <div><div class="card-label">24h Volume</div><div class="card-value" id="ovVol">--</div></div>
               <div><div class="card-label">24h Change</div><div class="card-value" id="ovChange">--</div></div>
               <div><div class="card-label">Total Supply</div><div class="card-value" id="ovSupply">--</div></div>
+              <div><div class="card-label">Smart Money</div><div class="card-value" id="ovSmart">--</div></div>
+              <div><div class="card-label">KOL Wallets</div><div class="card-value" id="ovRenowned">--</div></div>
             </div>
           </div>
           <div class="card" style="margin-bottom:16px">
@@ -862,6 +864,8 @@ function renderResult(d){
   document.getElementById('ovLiq2').textContent = formatPrice(d.dex?.liquidity);
   document.getElementById('ovHolders').textContent = d.holderCount||'--';
   document.getElementById('ovHolders2').textContent = d.holderCount||'--';
+  document.getElementById('ovSmart').textContent = d.smartWallets!=null?d.smartWallets:'--';
+  document.getElementById('ovRenowned').textContent = d.renownedWallets!=null?d.renownedWallets:'--';
   document.getElementById('ovVol').textContent = formatPrice(d.dex?.volume24h);
   const chEl = document.getElementById('ovChange');
   if(d.dex?.priceChange24h!=null){

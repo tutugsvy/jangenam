@@ -42,15 +42,52 @@ export function timeAgo(iso) {
 
 export function riskScore(d) {
   let score = 55;
+  // Contract security (GMGN)
+  if (d.isHoneypot) score = Math.max(5, score - 40);
   if (d.verified) score += 15;
-  if (d.holderCount && d.holderCount > 20) score += 10;
-  else if (d.holderCount && d.holderCount > 5) score += 5;
-  if (d.dex && d.dex.liquidity > 5000) score += 10;
-  else if (d.dex && d.dex.liquidity > 1000) score += 5;
+  if (d.renounced === true) score += 8;
+  else if (d.renounced === false) score -= 10;
+  if (d.isBlacklist) score -= 10;
+  // Tax
+  const buyTax = d.buyTax != null ? Number(d.buyTax) : 0;
+  const sellTax = d.sellTax != null ? Number(d.sellTax) : 0;
+  if (buyTax > 5 || sellTax > 5) score -= 15;
+  else if (buyTax > 0 || sellTax > 0) score -= 5;
+  // Rug ratio (0-1)
+  if (d.rugRatio != null) {
+    if (d.rugRatio > 0.3) score -= 25;
+    else if (d.rugRatio > 0.1) score -= 10;
+  }
+  // Holder concentration
+  if (d.top10HolderRate != null) {
+    if (d.top10HolderRate > 0.5) score -= 20;
+    else if (d.top10HolderRate > 0.2) score -= 8;
+    else if (d.top10HolderRate > 0) score += 5;
+  }
+  // Wash trading
+  if (d.isWashTrading) score -= 15;
+  // Holders count
+  if (d.holderCount && d.holderCount > 5000) score += 12;
+  else if (d.holderCount && d.holderCount > 500) score += 10;
+  else if (d.holderCount && d.holderCount > 20) score += 5;
+  // Liquidity
+  if (d.dex && d.dex.liquidity > 100000) score += 12;
+  else if (d.dex && d.dex.liquidity > 5000) score += 8;
+  else if (d.dex && d.dex.liquidity > 1000) score += 3;
+  // Smart money
+  if (d.smartWallets >= 3) score += 10;
+  else if (d.smartWallets > 0) score += 4;
+  if (d.renownedWallets > 0) score += 3;
+  // Dev
   if (d.devIsContract === false) score += 5;
+  if (d.creatorTokenStatus === 'creator_close') score += 10; // dev exited
+  else if (d.creatorTokenStatus === 'creator_hold') score -= 10; // dev still holding
+  if (d.creatorOpenCount > 5) score -= 15; // serial launcher
+  else if (d.creatorOpenCount > 1) score -= 5;
+  if (d.ctoFlag) score -= 5; // community takeover = dev abandoned
   if (d.devBalanceFormatted && Number(d.devBalanceFormatted) > 0) score = Math.max(10, score - 20);
   if (d.devActivity && d.devActivity.devSell) score = Math.max(10, score - 25);
-  return Math.min(99, Math.max(10, Math.round(score)));
+  return Math.min(99, Math.max(5, Math.round(score)));
 }
 
 export function riskLabel(s) {

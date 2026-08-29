@@ -112,6 +112,9 @@ async function dexScreener(ca) {
       liquidity: best.liquidity?.usd || null,
       fdv: best.fdv || null,
       volume24h: pairs.reduce((s, p) => s + (Number(p.volume?.h24) || 0), 0),
+      logoUrl: best.info?.imageUrl || best.info?.logo || null,
+      priceChange24h: best.priceChange?.h24 || null,
+      priceChange5m: best.priceChange?.m5 || null,
       pair: best.baseToken?.symbol + '/' + best.quoteToken?.symbol,
       dexUrl: best.url || null,
       pairCount: pairs.length,
@@ -308,9 +311,10 @@ async function scan(ca) {
   const bsData = bs || bsV1;
   result.blockscout = bsData ? {
     verified: bs?.is_verified || bsV1?.verified || false,
-    holderCount: bs?.holders || bsV1?.holders || null,
+    holderCount: bs?.holders_count || bs?.holders || bsV1?.holders || null,
     transferCount: bs?.transfers_count || null,
     totalSupplyOffChain: bs?.total_supply || bsV1?.total_supply || null,
+    iconUrl: bs?.icon_url || null,
   } : null;
 
   // 4. Smart contract verified
@@ -391,12 +395,30 @@ async function scan(ca) {
   // 10. X handle search
   result.xHandles = await searchX(ca, result.symbol);
 
-  // 11. Dev funding trace
+  // 11. Token logo (from Pons launchpad > Blockscout > DexScreener)
+  const ponsIcon = await ponsLogo(ca);
+  result.tokenIcon = ponsIcon || result.blockscout?.iconUrl || null;
+
+  // 12. Dev funding trace
   if (dev) {
     result.devFunding = await traceFunding(dev);
   }
 
   return result;
+}
+
+// Pons launchpad page — extract token logo (og:image / IPFS)
+async function ponsLogo(ca) {
+  try {
+    const res = await fetch(`https://www.ponsfamily.com/launchpad/${ca}`, {
+      headers: { 'User-Agent': UA }
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return m ? m[1] : null;
+  } catch { return null; }
 }
 
 // Dev funding trace — check where the dev wallet got its first ETH

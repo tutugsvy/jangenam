@@ -707,8 +707,10 @@ const server = createServer(async (req, res) => {
     return res.end(JSON.stringify({ name: 'Ponscan API', usage: '/scan?ca=0x...', endpoints: ['/scan'] }));
   }
 
-  if (req.method === 'GET' && pathname.startsWith('/public/')) {
-    const file = join(__dirname_ish, 'public', pathname.slice(8));
+  if (req.method === 'GET' && (pathname.startsWith('/public/') || ['/logo.png', '/logo-full.png', '/favicon.png'].includes(pathname))) {
+    const file = pathname.startsWith('/public/')
+      ? join(__dirname_ish, 'public', pathname.slice(8))
+      : join(__dirname_ish, 'public', pathname.slice(1));
     const ext = extname(file);
     if (existsSync(file) && MIME[ext]) {
       res.writeHead(200, { 'Content-Type': MIME[ext] });

@@ -258,8 +258,14 @@ body::after{
 .doc-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .doc-table tr:hover td{background:var(--bg2)}
 .feature-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:24px 0}
-.feature-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
-.feature-card .icon{font-size:22px;margin-bottom:12px}
+.feature-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:border-color 0.2s}
+.feature-card:hover{border-color:var(--border2)}
+.feature-card .icon{
+  width:40px;height:40px;border-radius:10px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green-bg);border:1px solid rgba(74,222,128,0.14);
+}
+.feature-card .icon svg{width:20px;height:20px;color:var(--green);fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
 .feature-card h3{font-size:15px;font-weight:600;margin-bottom:6px}
 .feature-card p{font-size:13px;color:var(--text2);line-height:1.6}
 .step-flow{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}

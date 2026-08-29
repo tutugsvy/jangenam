@@ -59,11 +59,6 @@
   <!-- LIVE DASHBOARD: Pons (real) -->
   <section class="section">
     <div class="container">
-      <div class="section-header" style="margin-bottom:24px">
-        <h2>Token Analysis — <span id="previewName">Pons</span> <span id="previewSymbol" style="font-weight:400;color:var(--text3);font-size:14px">($PONS)</span></h2>
-        <span class="more" onclick="document.getElementById('scanInput').focus()">Scan a token →</span>
-      </div>
-
       <div id="previewDashboard">
         <!-- Skeleton while loading -->
         <div class="grid-dashboard">
@@ -115,12 +110,12 @@
       <div class="doc-section">
         <h2>What we analyze</h2>
         <div class="feature-grid">
-          <div class="feature-card"><div class="icon">💼</div><h3>Developer</h3><p>Dev wallet, EOA/contract type, token &amp; ETH balance, USD worth, on-chain activity, and sell history.</p></div>
-          <div class="feature-card"><div class="icon">💸</div><h3>Funding Sources</h3><p>Trace where the developer wallet received its initial funding — the origin address and transaction.</p></div>
-          <div class="feature-card"><div class="icon">👥</div><h3>Holders</h3><p>Holder count, top-10 distribution, concentration risk, and whale exposure.</p></div>
-          <div class="feature-card"><div class="icon">🔐</div><h3>Contract</h3><p>Verification status, code size, implementation proxy, and Pons buy/sell fee structure.</p></div>
-          <div class="feature-card"><div class="icon">🐦</div><h3>Socials</h3><p>X/Twitter handles associated with the token, plus direct links to the launchpad and DEX.</p></div>
-          <div class="feature-card"><div class="icon">🛡️</div><h3>Risk Score</h3><p>Weighted score (0–99) combining verification, liquidity, holder count, dev behavior, and sell activity.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><h3>Developer</h3><p>Dev wallet, EOA/contract type, token &amp; ETH balance, USD worth, on-chain activity, and sell history.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div><h3>Funding Sources</h3><p>Trace where the developer wallet received its initial funding — the origin address and transaction.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>Holders</h3><p>Holder count, top-10 distribution, concentration risk, and whale exposure.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h3>Contract</h3><p>Verification status, code size, implementation proxy, and Pons buy/sell fee structure.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div><h3>Socials</h3><p>X/Twitter handles associated with the token, plus direct links to the launchpad and DEX.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div><h3>Risk Score</h3><p>Weighted score (0–99) combining verification, liquidity, holder count, dev behavior, and sell activity.</p></div>
         </div>
       </div>
 
@@ -186,9 +181,9 @@
       <div class="doc-section">
         <h2>What makes Ponscan different</h2>
         <div class="feature-grid">
-          <div class="feature-card"><div class="icon">🎯</div><h3>Dev-focused</h3><p>We treat the developer as the primary risk surface — their wallet, holdings, funding, and sell behavior.</p></div>
-          <div class="feature-card"><div class="icon">⛓️</div><h3>Real on-chain data</h3><p>No guesswork. Every number comes from the Robinhood Chain, Blockscout, rh-scan, and DexScreener.</p></div>
-          <div class="feature-card"><div class="icon">⚡</div><h3>Fast &amp; free</h3><p>Full scans in seconds, cached for instant repeat lookups. No account, no API key, no paywall.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><h3>Dev-focused</h3><p>We treat the developer as the primary risk surface — their wallet, holdings, funding, and sell behavior.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div><h3>Real on-chain data</h3><p>No guesswork. Every number comes from the Robinhood Chain, Blockscout, rh-scan, and DexScreener.</p></div>
+          <div class="feature-card"><div class="icon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><h3>Fast &amp; free</h3><p>Full scans in seconds, cached for instant repeat lookups. No account, no API key, no paywall.</p></div>
         </div>
       </div>
 

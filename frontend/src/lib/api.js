@@ -35,7 +35,16 @@ export function showResultPage() {
   document.getElementById('pageDocs').classList.remove('active');
   document.getElementById('pageAbout').classList.remove('active');
   document.querySelectorAll('#navLinks a').forEach(a => a.classList.remove('active'));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Scroll straight to the result (token header) so the user sees it immediately
+  const target = document.getElementById('tokenHeader');
+  setTimeout(() => {
+    if (target) {
+      const y = target.getBoundingClientRect().top + window.scrollY - 84;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, 50);
   history.replaceState(null, '', '#home');
 }
 

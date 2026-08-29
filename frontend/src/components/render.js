@@ -242,9 +242,6 @@ export function renderPreview(d) {
   const topPct = holders.length ? (parseFloat(holders[0].percentage) || 0) : 0;
   const devSell = d.devActivity && d.devActivity.devSell;
 
-  document.getElementById('previewName').textContent = d.name || 'Pons';
-  document.getElementById('previewSymbol').textContent = '($' + (d.symbol || 'PONS') + ')';
-
   let barHtml = '';
   const hcolors = ['var(--accent2)', 'var(--accent3)', 'var(--green)', 'var(--yellow)', 'var(--red)', 'var(--text3)'];
   holders.slice(0, 10).forEach((h, i) => {

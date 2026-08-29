@@ -1,11 +1,8 @@
 // ===== MAIN ENTRY =====
-import { doScan, showResultPage, loadPreview } from './lib/api.js';
+import { doScan, showResultPage, loadPreview, scanData } from './lib/api.js';
 import { renderExplorer, rescanHistory } from './lib/history.js';
 import { renderPreview } from './components/render.js';
 import { copyText } from './lib/utils.js';
-
-// ===== STATE =====
-let scanData = null;
 
 // ===== ROUTER =====
 const pages = { home: 'pageHome', explorer: 'pageExplorer', docs: 'pageDocs', about: 'pageAbout' };

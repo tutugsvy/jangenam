@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/scan",
+      "destination": "http://104.245.34.139:4200/scan"
+    }
+  ]
+}

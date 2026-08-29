@@ -8,211 +8,240 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #07070d;
-    --surface: #0e0e18;
-    --card: #13131f;
-    --border: #1e1e35;
-    --accent: #00d4ff;
-    --accent2: #7c3aed;
-    --green: #22c55e;
-    --red: #ef4444;
-    --amber: #f59e0b;
-    --text: #e2e8f0;
-    --text2: #94a3b8;
-    --text3: #64748b;
-    --radius: 12px;
-  }
   body {
     font-family: 'Space Grotesk', sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background: #07070d;
+    color: #e2e8f0;
     min-height: 100vh;
-    background-image:
-      radial-gradient(ellipse 80% 60% at 50% -20%, rgba(0,212,255,.08) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 50% at 80% 80%, rgba(124,58,237,.06) 0%, transparent 50%);
+    overflow-x: hidden;
   }
-  .container { max-width: 820px; margin: 0 auto; padding: 24px 16px; }
-  
-  /* Header */
+
+  /* === VIDEO BACKGROUND === */
+  .hero-bg { position: fixed; inset: 0; z-index: 0; }
+  .hero-bg video { width: 100%; height: 100%; object-fit: cover; }
+  .hero-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 1; }
+
+  /* === CONTENT WRAPPER === */
+  .wrapper { position: relative; z-index: 2; max-width: 820px; margin: 0 auto; padding: 40px 16px 60px; }
+
+  /* === HEADER (glass card) === */
   header {
-    text-align: center; padding: 40px 0 32px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 32px;
+    text-align: center;
+    background: rgba(255,255,255,.05);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 20px;
+    padding: 36px 24px 28px;
+    margin-bottom: 28px;
   }
   header h1 {
-    font-size: 28px; font-weight: 700;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-size: clamp(22px, 4vw, 32px); font-weight: 600;
     letter-spacing: -0.5px;
+    line-height: 1.15;
   }
-  header p { color: var(--text3); font-size: 14px; margin-top: 6px; }
-  
-  /* Search */
+  header h1 .word {
+    display: inline-block; opacity: 0; transform: translateY(20px) scale(.95);
+  }
+  header h1 .word.show {
+    animation: wordPop .5s cubic-bezier(.22,.61,.36,1) forwards;
+  }
+  @keyframes wordPop {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  header p {
+    color: rgba(255,255,255,.5); font-size: 14px; margin-top: 8px;
+    opacity: 0; transform: translateY(12px); transition: all .6s cubic-bezier(.22,.61,.36,1);
+  }
+  header p.show { opacity: 1; transform: translateY(0); }
+
+  /* === SEARCH BOX (glass) === */
   .search-box {
-    display: flex; gap: 10px; max-width: 600px; margin: 0 auto 32px;
+    display: flex; gap: 10px; max-width: 640px; margin: 0 auto 28px;
+    transition: all .6s cubic-bezier(.22,.61,.36,1);
+    opacity: 0; transform: translateY(16px);
   }
+  .search-box.show { opacity: 1; transform: translateY(0); }
   .search-box input {
-    flex: 1; padding: 14px 18px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--card);
-    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px;
-    outline: none; transition: border-color .2s;
+    flex: 1; padding: 16px 20px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color .25s;
   }
-  .search-box input:focus { border-color: var(--accent); }
-  .search-box input::placeholder { color: var(--text3); font-family: 'Space Grotesk', sans-serif; }
+  .search-box input:focus { border-color: rgba(0,212,255,.5); }
+  .search-box input::placeholder { color: rgba(255,255,255,.3); font-family: 'Space Grotesk', sans-serif; }
   .search-box button {
-    padding: 14px 28px; border-radius: var(--radius);
-    border: none; cursor: pointer; font-weight: 600; font-size: 14px;
-    font-family: 'Space Grotesk', sans-serif;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff; transition: opacity .2s, transform .1s;
-    white-space: nowrap;
+    padding: 16px 32px; border-radius: 14px; border: none;
+    background: #000; color: #fff; font-weight: 600; font-size: 14px;
+    font-family: 'Space Grotesk', sans-serif; cursor: pointer;
+    transition: opacity .2s, transform .1s; white-space: nowrap;
   }
-  .search-box button:hover { opacity: .9; }
+  .search-box button:hover { opacity: .85; }
   .search-box button:active { transform: scale(.97); }
   .search-box button:disabled { opacity: .4; cursor: not-allowed; }
-
-  /* Loading */
-  .loading {
-    display: none; text-align: center; padding: 60px 0;
+  @media (max-width: 640px) {
+    .search-box { flex-direction: column; }
+    .search-box input { text-align: center; }
+    .search-box button { width: 100%; }
   }
+
+  /* === LOADING === */
+  .loading { display: none; text-align: center; padding: 50px 0; }
   .loading.active { display: block; }
   .spinner {
-    width: 40px; height: 40px; border: 3px solid var(--border);
-    border-top-color: var(--accent); border-radius: 50%;
+    width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.1);
+    border-top-color: #00d4ff; border-radius: 50%;
     animation: spin .8s linear infinite; margin: 0 auto 16px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loading p { color: var(--text3); font-size: 14px; }
+  .loading p { color: rgba(255,255,255,.4); font-size: 14px; }
 
-  /* Error */
+  /* === ERROR === */
   .error {
-    display: none; padding: 16px 20px; border-radius: var(--radius);
-    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
-    color: var(--red); font-size: 14px; margin-bottom: 24px;
+    display: none; padding: 14px 18px; border-radius: 14px;
+    background: rgba(239,68,68,.12); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(239,68,68,.2);
+    color: #ef4444; font-size: 14px; margin-bottom: 24px;
   }
   .error.active { display: block; }
 
-  /* Results */
+  /* === RESULTS (glass cards) === */
   .results { display: none; }
   .results.active { display: block; }
 
-  /* Token Header */
+  .card {
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 18px; padding: 20px 22px; margin-bottom: 14px;
+    transition: all .6s cubic-bezier(.22,.61,.36,1);
+    opacity: 0; transform: translateY(18px);
+  }
+  .card.show { opacity: 1; transform: translateY(0); }
+
+  .card-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: rgba(255,255,255,.3); margin-bottom: 14px; font-weight: 600;
+  }
+
+  /* Token header special */
   .token-header {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
-    display: flex; align-items: center; gap: 20px;
+    display: flex; align-items: center; gap: 18px;
   }
   .token-icon {
-    width: 52px; height: 52px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    width: 48px; height: 48px; border-radius: 14px;
+    background: rgba(0,212,255,.15);
+    border: 1px solid rgba(0,212,255,.2);
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0;
+    font-size: 20px; font-weight: 700; color: #00d4ff; flex-shrink: 0;
   }
-  .token-info h2 { font-size: 22px; font-weight: 700; }
-  .token-info .symbol { color: var(--text2); font-size: 14px; }
-  .token-meta { display: flex; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
-  .token-meta span { color: var(--text3); font-size: 12px; }
-  .token-meta .label { color: var(--text3); }
-  .token-meta .value { color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+  .token-info h2 { font-size: 22px; font-weight: 600; }
+  .token-info .symbol { color: rgba(255,255,255,.45); font-size: 13px; }
+  .token-meta { display: flex; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
+  .token-meta span { color: rgba(255,255,255,.35); font-size: 12px; }
+  .token-meta .value { color: rgba(255,255,255,.6); font-family: 'JetBrains Mono', monospace; }
 
-  /* Grid */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 20px;
-  }
-  .card-title {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
-    color: var(--text3); margin-bottom: 12px; font-weight: 600;
-  }
+  /* grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 0; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
 
   /* Dev address */
-  .address-row {
+  .addr-row {
     display: flex; align-items: center; gap: 10px;
     font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    color: var(--text2); padding: 8px 0;
-    border-bottom: 1px solid var(--border);
+    color: rgba(255,255,255,.5); padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
   }
-  .address-row:last-child { border-bottom: none; }
-  .address-row .label { color: var(--text3); font-family: 'Space Grotesk', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; min-width: 60px; }
-  .address-row .addr { flex: 1; word-break: break-all; cursor: pointer; transition: color .2s; }
-  .address-row .addr:hover { color: var(--accent); }
+  .addr-row:last-child { border-bottom: none; }
+  .addr-row .alabel { color: rgba(255,255,255,.3); font-family: 'Space Grotesk', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; min-width: 55px; }
+  .addr { cursor: pointer; word-break: break-all; transition: color .2s; }
+  .addr:hover { color: #00d4ff; }
   .badge {
     display: inline-block; padding: 2px 8px; border-radius: 4px;
-    font-size: 10px; font-weight: 600; font-family: 'Space Grotesk', sans-serif;
-    text-transform: uppercase; letter-spacing: .5px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
   }
-  .badge-eoa { background: rgba(34,197,94,.12); color: var(--green); }
-  .badge-contract { background: rgba(245,158,11,.12); color: var(--amber); }
-  .badge-verified { background: rgba(34,197,94,.12); color: var(--green); }
-  .badge-unverified { background: rgba(239,68,68,.12); color: var(--red); }
-  .badge-pons { background: rgba(0,212,255,.12); color: var(--accent); }
+  .badge-eoa { background: rgba(34,197,94,.12); color: #22c55e; }
+  .badge-contract { background: rgba(245,158,11,.12); color: #f59e0b; }
+  .badge-verified { background: rgba(34,197,94,.12); color: #22c55e; }
+  .badge-unverified { background: rgba(239,68,68,.12); color: #ef4444; }
+  .badge-pons { background: rgba(0,212,255,.12); color: #00d4ff; }
 
-  /* Balance row */
-  .balance-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 0; border-bottom: 1px solid var(--border);
+  .bal-row {
+    display: flex; justify-content: space-between; padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
   }
-  .balance-row:last-child { border-bottom: none; }
-  .balance-row .b-label { color: var(--text3); font-size: 12px; }
-  .balance-row .b-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); }
+  .bal-row:last-child { border-bottom: none; }
+  .bal-row .bl { color: rgba(255,255,255,.35); font-size: 12px; }
+  .bal-row .bv { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #e2e8f0; }
 
-  /* Holder bar */
+  /* Holders */
   .holder-item {
-    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    display: flex; align-items: center; gap: 10px; padding: 5px 0;
     font-size: 12px; font-family: 'JetBrains Mono', monospace;
   }
-  .holder-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-  .holder-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
-  .holder-addr { color: var(--text2); cursor: pointer; min-width: 120px; }
-  .holder-addr:hover { color: var(--accent); }
-  .holder-pct { color: var(--text3); min-width: 60px; text-align: right; }
+  .holder-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+  .holder-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #00d4ff, #7c3aed); }
+  .holder-addr { color: rgba(255,255,255,.5); cursor: pointer; min-width: 110px; }
+  .holder-addr:hover { color: #00d4ff; }
+  .holder-pct { color: rgba(255,255,255,.35); min-width: 55px; text-align: right; }
 
   /* Funding */
-  .funding-item { padding: 4px 0; font-size: 13px; }
-  .funding-item .f-label { color: var(--text3); font-size: 11px; }
-  .funding-item .f-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .fund-item { padding: 4px 0; font-size: 13px; }
+  .fund-item .fl { color: rgba(255,255,255,.3); font-size: 11px; }
+  .fund-item .fv { color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-  .tag-link { color: var(--accent); text-decoration: none; }
+  .tag-link { color: #00d4ff; text-decoration: none; font-size: 12px; }
   .tag-link:hover { text-decoration: underline; }
 
-  /* DexScreener */
-  .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .dex-cell { padding: 6px 0; }
-  .dex-cell .d-label { color: var(--text3); font-size: 11px; }
-  .dex-cell .d-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); }
+  /* Dex */
+  .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .dex-cell { padding: 5px 0; }
+  .dex-cell .dl { color: rgba(255,255,255,.3); font-size: 11px; }
+  .dex-cell .dv { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #e2e8f0; }
 
-  .null-state { color: var(--text3); font-size: 12px; font-style: italic; }
+  .null-state { color: rgba(255,255,255,.3); font-size: 12px; font-style: italic; }
 
-  /* Footer */
-  footer { text-align: center; padding: 40px 0 24px; color: var(--text3); font-size: 12px; border-top: 1px solid var(--border); margin-top: 32px; }
+  /* Links row */
+  .links-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   /* Toast */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--card); border: 1px solid var(--border); padding: 10px 20px;
-    border-radius: 8px; font-size: 13px; color: var(--text2);
-    opacity: 0; transition: all .3s; pointer-events: none;
-    font-family: 'Space Grotesk', sans-serif;
+    background: rgba(255,255,255,.08); backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,.1); padding: 10px 22px;
+    border-radius: 10px; font-size: 13px; color: rgba(255,255,255,.6);
+    opacity: 0; transition: all .3s; pointer-events: none; z-index: 99;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  footer { text-align: center; padding: 40px 0 20px; color: rgba(255,255,255,.25); font-size: 12px; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<header>
-  .container
-    h1 ⟠ Ponscan
-    p Token intelligence for Robinhood Chain
-  </div>
-</header>
+<div class="hero-bg">
+  <video autoplay muted loop playsinline>
+    <source src="https://cdn.sceneai.art/Hero%20Section%20Video/adec243d-ffda-48cf-a8a8-26e6d6bcbe9b.mp4" type="video/mp4">
+  </video>
+</div>
+<div class="hero-overlay"></div>
 
-<main class="container">
-  <div class="search-box">
+<div class="wrapper">
+
+  <header>
+    <h1 id="headingWrap">
+      <span id="headingWords"></span>
+    </h1>
+    <p id="tagline">Token intelligence for Robinhood Chain</p>
+  </header>
+
+  <div class="search-box" id="searchBox">
     <input type="text" id="caInput" placeholder="0x..." spellcheck="false">
     <button id="scanBtn">Scan Token</button>
   </div>
@@ -225,59 +254,53 @@
   <div class="error" id="error"></div>
 
   <div class="results" id="results">
-    <!-- Token Header -->
-    <div class="token-header" id="tokenHeader">
-      <div class="token-icon" id="tokenIcon">?</div>
-      <div class="token-info">
-        <h2 id="tokenName">—</h2>
-        <div class="symbol" id="tokenSymbol">—</div>
-        <div class="token-meta" id="tokenMeta"></div>
+    <!-- Token Header card -->
+    <div class="card" data-step="0">
+      <div class="token-header">
+        <div class="token-icon" id="tokenIcon">?</div>
+        <div class="token-info">
+          <h2 id="tokenName">—</h2>
+          <div class="symbol" id="tokenSymbol">—</div>
+          <div class="token-meta" id="tokenMeta"></div>
+        </div>
       </div>
     </div>
 
     <div class="grid-2">
-      <!-- Dev Card -->
-      <div class="card">
+      <div class="card" data-step="1">
         <div class="card-title">👤 Developer</div>
         <div id="devContent"></div>
       </div>
-
-      <!-- Funding Card -->
-      <div class="card">
+      <div class="card" data-step="2">
         <div class="card-title">💰 Funding Trace</div>
         <div id="fundingContent"></div>
       </div>
     </div>
 
     <div class="grid-2">
-      <!-- Holders -->
-      <div class="card">
+      <div class="card" data-step="3">
         <div class="card-title">📊 Top Holders</div>
         <div id="holdersContent"></div>
       </div>
-
-      <!-- Dex -->
-      <div class="card">
+      <div class="card" data-step="4">
         <div class="card-title">📈 DexScreener</div>
         <div id="dexContent"></div>
       </div>
     </div>
 
-    <!-- Extra Info -->
-    <div class="card" style="margin-top: 12px;">
+    <div class="card" data-step="5">
       <div class="card-title">🔗 Links</div>
-      <div id="linksContent" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      <div class="links-row" id="linksContent"></div>
     </div>
   </div>
 
   <footer>Ponscan — built on Robinhood Chain</footer>
-</main>
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const API = window.location.origin;
-
+const API = new URLSearchParams(window.location.search).get('api') || window.location.origin;
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -289,15 +312,28 @@ function copy(text) {
     setTimeout(() => t.classList.remove('show'), 1500);
   });
 }
+function shortAddr(a) { return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+function bsLink(a) { return 'https://robinhoodchain.blockscout.com/address/'+a; }
 
-function shortAddr(addr) {
-  return addr ? addr.slice(0, 6) + '…' + addr.slice(-4) : '—';
+// === WORD-BY-WORD ANIMATION ===
+const headingText = "Ponscan — Token Intelligence";
+const words = headingText.split(' ');
+const wrap = $('#headingWords');
+wrap.innerHTML = words.map((w,i) => `<span class="word" data-idx="${i}">${w}</span>`).join(' ');
+const wordEls = document.querySelectorAll('.word');
+const tagline = $('#tagline');
+
+function animate() {
+  wordEls.forEach((el, i) => {
+    setTimeout(() => el.classList.add('show'), 120 + i * 100);
+  });
+  const wordEnd = 120 + wordEls.length * 100 + 150;
+  setTimeout(() => tagline.classList.add('show'), wordEnd);
+  const searchEnd = wordEnd + 200;
+  setTimeout(() => $('#searchBox').classList.add('show'), searchEnd);
 }
 
-function bsLink(addr) {
-  return `https://robinhoodchain.blockscout.com/address/${addr}`;
-}
-
+// === SCAN LOGIC ===
 $('#scanBtn').addEventListener('click', scan);
 $('#caInput').addEventListener('keydown', e => { if (e.key === 'Enter') scan(); });
 
@@ -307,20 +343,21 @@ async function scan() {
     showError('Invalid contract address. Enter a valid 0x… address.');
     return;
   }
-
   hideError();
   $('#loading').classList.add('active');
   $('#results').classList.remove('active');
   $('#scanBtn').disabled = true;
-
   try {
     const res = await fetch(`${API}/scan?ca=${ca}`);
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || `HTTP ${res.status}`);
+      const body = await res.text();
+      let msg;
+      try { msg = JSON.parse(body).error; } catch { msg = `HTTP ${res.status}: ${body.slice(0,80)}`; }
+      throw new Error(msg);
     }
     const data = await res.json();
     render(data);
+    animateResults();
     $('#results').classList.add('active');
   } catch (e) {
     showError(e.message);
@@ -330,40 +367,36 @@ async function scan() {
   }
 }
 
+function animateResults() {
+  const cards = document.querySelectorAll('.card[data-step]');
+  cards.forEach((c, i) => {
+    setTimeout(() => c.classList.add('show'), 100 + i * 80);
+  });
+}
+
 function render(d) {
-  // Token header
   const first = d.name || d.symbol || '?';
   $('#tokenIcon').textContent = first[0].toUpperCase();
   $('#tokenName').textContent = d.name || '—';
   $('#tokenSymbol').textContent = (d.symbol || '—') + ' · ' + (d.decimals || '?') + ' decimals';
-
   let meta = '';
   if (d.totalSupply) {
-    const ts = d.totalSupply.length > 12 ? d.totalSupply.slice(0, 6) + '…' + d.totalSupply.slice(-4) : d.totalSupply;
-    meta += `<span><span class="label">Supply </span><span class="value">${ts}</span></span>`;
+    const ts = d.totalSupply.length > 12 ? d.totalSupply.slice(0,6)+'…'+d.totalSupply.slice(-4) : d.totalSupply;
+    meta += '<span><span class="value">Supply </span><span class="value">'+ts+'</span></span>';
   }
-  if (d.codeSize) meta += `<span><span class="label">Code </span><span class="value">${d.codeSize.toLocaleString()} B</span></span>`;
-  if (d.blockscout?.holderCount) meta += `<span><span class="label">Holders </span><span class="value">${d.blockscout.holderCount}</span></span>`;
+  if (d.codeSize) meta += '<span><span class="value">Code </span><span class="value">'+d.codeSize.toLocaleString()+' B</span></span>';
+  if (d.blockscout?.holderCount) meta += '<span><span class="value">Holders </span><span class="value">'+d.blockscout.holderCount+'</span></span>';
   $('#tokenMeta').innerHTML = meta;
 
   // Dev
   let devHtml = '';
   if (d.dev) {
-    devHtml += `<div class="address-row">
-      <span class="label">Address</span>
-      <span class="addr" onclick="copy('${d.dev}')" title="Click to copy">${d.dev}</span>
-      ${d.devIsContract ? '<span class="badge badge-contract">Contract</span>' : '<span class="badge badge-eoa">EOA</span>'}
-    </div>`;
-    if (d.devLabel) devHtml += `<div class="address-row"><span class="label">Role</span><span><span class="badge badge-pons">${d.devLabel}</span></span></div>`;
-    if (d.devBalanceFormatted !== null && d.devBalanceFormatted !== undefined) {
-      devHtml += `<div class="balance-row"><span class="b-label">Token Balance</span><span class="b-value">${d.devBalanceFormatted} ${d.symbol || ''}</span></div>`;
-    }
-    if (d.devEthBalance) {
-      devHtml += `<div class="balance-row"><span class="b-label">ETH Balance</span><span class="b-value">${d.devEthBalance} ETH</span></div>`;
-    }
+    devHtml += '<div class="addr-row"><span class="alabel">Address</span><span class="addr" onclick="copy(\''+d.dev+'\')" title="Click to copy">'+d.dev+'</span>'+(d.devIsContract?'<span class="badge badge-contract">Contract</span>':'<span class="badge badge-eoa">EOA</span>')+'</div>';
+    if (d.devLabel) devHtml += '<div class="addr-row"><span class="alabel">Role</span><span class="badge badge-pons">'+d.devLabel+'</span></div>';
+    if (d.devBalanceFormatted != null) devHtml += '<div class="bal-row"><span class="bl">Token Balance</span><span class="bv">'+d.devBalanceFormatted+' '+(d.symbol||'')+'</span></div>';
+    if (d.devEthBalance) devHtml += '<div class="bal-row"><span class="bl">ETH Balance</span><span class="bv">'+d.devEthBalance+' ETH</span></div>';
     if (d.deployInfo) {
-      devHtml += `<div class="balance-row"><span class="b-label">Deploy Block</span><span class="b-value">#${d.deployInfo.deployBlock?.toLocaleString() || '?'}</span></div>`;
-      devHtml += `<div class="balance-row"><span class="b-label">Method</span><span class="b-value" style="font-size:11px;color:var(--text3)">${d.deployInfo.method || '?'}</span></div>`;
+      devHtml += '<div class="bal-row"><span class="bl">Deploy Block</span><span class="bv">#'+(d.deployInfo.deployBlock?.toLocaleString()||'?')+'</span></div>';
     }
   } else {
     devHtml = '<div class="null-state">Dev address not found</div>';
@@ -372,64 +405,36 @@ function render(d) {
 
   // Funding
   let fundHtml = '';
-  if (d.devFunding) {
-    if (d.devFunding.fundedBy && d.devFunding.fundedBy !== 'unknown') {
-      fundHtml += `<div class="funding-item"><span class="f-label">Funded by</span><div class="f-value" style="cursor:pointer" onclick="copy('${d.devFunding.fundedBy}')">${d.devFunding.fundedBy}</div></div>`;
-    }
-    if (d.devFunding.fundedValueEth) {
-      fundHtml += `<div class="funding-item"><span class="f-label">First inflow</span><div class="f-value">${d.devFunding.fundedValueEth} ETH</div></div>`;
-    }
-    if (d.devFunding.fundedTx) {
-      fundHtml += `<div class="funding-item"><span class="f-label">Tx</span><div class="f-value" style="font-size:11px;cursor:pointer" onclick="copy('${d.devFunding.fundedTx}')">${shortAddr(d.devFunding.fundedTx)}</div></div>`;
-    }
-    if (d.devFunding.totalIncomingTxs) {
-      fundHtml += `<div class="funding-item"><span class="f-label">Total incoming</span><div class="f-value">${d.devFunding.totalIncomingTxs} txs</div></div>`;
-    }
-    if (d.devFunding.firstFunderNote) {
-      fundHtml += `<div class="funding-item"><span class="f-label">Note</span><div class="f-value" style="color:var(--text3);font-size:11px">${d.devFunding.firstFunderNote}</div></div>`;
-    }
+  if (d.devFunding && d.devFunding.fundedBy && d.devFunding.fundedBy !== 'unknown') {
+    fundHtml += '<div class="fund-item"><span class="fl">Funded by</span><div class="fv" style="cursor:pointer" onclick="copy(\''+d.devFunding.fundedBy+'\')">'+d.devFunding.fundedBy+'</div></div>';
+    if (d.devFunding.fundedValueEth) fundHtml += '<div class="fund-item"><span class="fl">First inflow</span><div class="fv">'+d.devFunding.fundedValueEth+' ETH</div></div>';
+    if (d.devFunding.fundedTx) fundHtml += '<div class="fund-item"><span class="fl">Tx</span><div class="fv" style="font-size:11px;cursor:pointer" onclick="copy(\''+d.devFunding.fundedTx+'\')">'+shortAddr(d.devFunding.fundedTx)+'</div></div>';
+    if (d.devFunding.totalIncomingTxs) fundHtml += '<div class="fund-item"><span class="fl">Total incoming</span><div class="fv">'+d.devFunding.totalIncomingTxs+' txs</div></div>';
   } else {
     fundHtml = '<div class="null-state">No funding trace found</div>';
   }
-  if (!fundHtml) fundHtml = '<div class="null-state">No funding trace found</div>';
   $('#fundingContent').innerHTML = fundHtml;
 
   // Holders
   let hHtml = '';
   if (d.topHolders && d.topHolders.length) {
-    const maxPct = d.topHolders.reduce((m, h) => Math.max(m, parseFloat(h.percentage) || 0), 0);
-    d.topHolders.forEach((h, i) => {
-      const pct = parseFloat(h.percentage) || 0;
-      const barW = maxPct > 0 ? (pct / maxPct * 100) : 0;
-      hHtml += `<div class="holder-item">
-        <span style="color:var(--text3);min-width:20px">${i+1}</span>
-        <span class="holder-addr" onclick="copy('${h.address}')" title="Click to copy">${shortAddr(h.address)}</span>
-        <div class="holder-bar-wrap"><div class="holder-bar" style="width:${barW}%"></div></div>
-        <span class="holder-pct">${h.percentage || '0%'}</span>
-      </div>`;
+    const maxPct = d.topHolders.reduce((m,h) => Math.max(m, parseFloat(h.percentage)||0), 0);
+    d.topHolders.forEach((h,i) => {
+      const pct = parseFloat(h.percentage)||0;
+      const bw = maxPct > 0 ? (pct/maxPct*100) : 0;
+      hHtml += '<div class="holder-item"><span style="color:rgba(255,255,255,.3);min-width:18px">'+(i+1)+'</span><span class="holder-addr" onclick="copy(\''+h.address+'\')" title="Copy">'+shortAddr(h.address)+'</span><div class="holder-bar-wrap"><div class="holder-bar" style="width:'+bw+'%"></div></div><span class="holder-pct">'+(h.percentage||'0%')+'</span></div>';
     });
-    if (d.holderCount > 10) {
-      hHtml += `<div style="color:var(--text3);font-size:11px;margin-top:6px;text-align:center">+ ${d.holderCount - 10} more holders</div>`;
-    }
+    if (d.holderCount > 10) hHtml += '<div style="color:rgba(255,255,255,.25);font-size:11px;margin-top:6px;text-align:center">+ '+(d.holderCount-10)+' more holders</div>';
   } else {
     hHtml = '<div class="null-state">No holder data available</div>';
   }
   $('#holdersContent').innerHTML = hHtml;
 
-  // DexScreener
+  // Dex
   let dexHtml = '';
   if (d.dex) {
-    dexHtml = '<div class="dex-grid">';
-    dexHtml += `<div class="dex-cell"><div class="d-label">Price</div><div class="d-value">${d.dex.priceUsd ? '$' + parseFloat(d.dex.priceUsd).toFixed(12) : '—'}</div></div>`;
-    dexHtml += `<div class="dex-cell"><div class="d-label">Liquidity</div><div class="d-value">${d.dex.liquidity ? '$' + Number(d.dex.liquidity).toLocaleString() : '—'}</div></div>`;
-    dexHtml += `<div class="dex-cell"><div class="d-label">FDV</div><div class="d-value">${d.dex.fdv ? '$' + Number(d.dex.fdv).toLocaleString() : '—'}</div></div>`;
-    dexHtml += `<div class="dex-cell"><div class="d-label">24h Vol</div><div class="d-value">${d.dex.volume24h ? '$' + Number(d.dex.volume24h).toLocaleString() : '—'}</div></div>`;
-    dexHtml += `<div class="dex-cell"><div class="d-label">Pairs</div><div class="d-value">${d.dex.pairCount || 0}</div></div>`;
-    dexHtml += `<div class="dex-cell"><div class="d-label">Pair</div><div class="d-value">${d.dex.pair || '—'}</div></div>`;
-    dexHtml += '</div>';
-    if (d.dex.dexUrl) {
-      dexHtml += `<div style="margin-top:8px"><a href="${d.dex.dexUrl}" target="_blank" class="tag tag-link">↗ View on DexScreener</a></div>`;
-    }
+    dexHtml = '<div class="dex-grid"><div class="dex-cell"><div class="dl">Price</div><div class="dv">'+(d.dex.priceUsd?'$'+parseFloat(d.dex.priceUsd).toFixed(12):'—')+'</div></div><div class="dex-cell"><div class="dl">Liquidity</div><div class="dv">'+(d.dex.liquidity?'$'+Number(d.dex.liquidity).toLocaleString():'—')+'</div></div><div class="dex-cell"><div class="dl">FDV</div><div class="dv">'+(d.dex.fdv?'$'+Number(d.dex.fdv).toLocaleString():'—')+'</div></div><div class="dex-cell"><div class="dl">24h Vol</div><div class="dv">'+(d.dex.volume24h?'$'+Number(d.dex.volume24h).toLocaleString():'—')+'</div></div><div class="dex-cell"><div class="dl">Pairs</div><div class="dv">'+(d.dex.pairCount||0)+'</div></div><div class="dex-cell"><div class="dl">Pair</div><div class="dv">'+(d.dex.pair||'—')+'</div></div></div>';
+    if (d.dex.dexUrl) dexHtml += '<div style="margin-top:8px"><a href="'+d.dex.dexUrl+'" target="_blank" class="tag-link">↗ View on DexScreener</a></div>';
   } else {
     dexHtml = '<div class="null-state">No DEX data available</div>';
   }
@@ -437,24 +442,21 @@ function render(d) {
 
   // Links
   let linksHtml = '';
-  if (d.verified) linksHtml += `<span class="badge badge-verified">✓ Verified</span>`;
-  else linksHtml += `<span class="badge badge-unverified">✗ Unverified</span>`;
-  if (d.ponsFee) linksHtml += `<span class="badge badge-pons">Fee ${d.ponsFee} bps</span>`;
-  if (d.v2Pair) linksHtml += `<a href="${bsLink(d.v2Pair)}" target="_blank" class="tag tag-link">↗ V2 Pair</a>`;
-  if (d.xHandles && d.xHandles.length) {
-    d.xHandles.forEach(h => {
-      linksHtml += `<a href="https://x.com/${h}" target="_blank" class="tag tag-link">🐦 @${h}</a>`;
-    });
-  }
-  linksHtml += `<a href="${bsLink(d.ca)}" target="_blank" class="tag tag-link">↗ Blockscout</a>`;
+  if (d.verified) linksHtml += '<span class="badge badge-verified">✓ Verified</span>';
+  else linksHtml += '<span class="badge badge-unverified">✗ Unverified</span>';
+  if (d.ponsFee) linksHtml += '<span class="badge badge-pons">Fee '+d.ponsFee+' bps</span>';
+  if (d.v2Pair) linksHtml += '<a href="'+bsLink(d.v2Pair)+'" target="_blank" class="tag-link">↗ V2 Pair</a>';
+  if (d.xHandles && d.xHandles.length) d.xHandles.forEach(h => { linksHtml += '<a href="https://x.com/'+h+'" target="_blank" class="tag-link">🐦 @'+h+'</a>'; });
+  linksHtml += '<a href="'+bsLink(d.ca)+'" target="_blank" class="tag-link">↗ Blockscout</a>';
   $('#linksContent').innerHTML = linksHtml;
 }
 
-function showError(msg) {
-  $('#error').textContent = '⚠ ' + msg;
-  $('#error').classList.add('active');
-}
+function showError(msg) { $('#error').textContent = '⚠ '+msg; $('#error').classList.add('active'); }
 function hideError() { $('#error').classList.remove('active'); }
+
+// === START ANIMATION ===
+if (document.readyState === 'complete') animate();
+else window.addEventListener('load', animate);
 </script>
 </body>
 </html>

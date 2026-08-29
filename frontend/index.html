@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ponscan — Scan Before You Buy</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="text" id="loadingText">Analyzing token...</div>
+  <div class="sub" id="loadingSub">Scanning on-chain data</div>
+</div>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+  <div class="container">
+    <a class="nav-brand" href="#home">
+      <img src="/logo.png" alt="Ponscan" class="nav-logo">
+      <span><span class="pon">pon</span><span class="scan">scan</span></span>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#home" data-nav="home">Scanner</a>
+      <a href="#explorer" data-nav="explorer">Explorer</a>
+      <a href="#docs" data-nav="docs">Docs</a>
+      <a href="#about" data-nav="about">About</a>
+    </div>
+    <div class="nav-actions">
+      <span class="chain-pill"><span class="dot"></span>Robinhood Chain</span>
+      <button class="mobile-menu-btn" id="mobileMenu">☰</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== PAGE: HOME ===== -->
+<div class="page landing-hero-page" id="pageHome">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">⚡ Real-time on-chain analytics</div>
+      <h1><span class="accent">Scan</span> Before You Buy.</h1>
+      <p>Analyze tokens, trace developer funding, verify socials, and uncover risks before you trade.</p>
+      <div class="scanner-box" id="heroScanner">
+        <span class="icon">🔍</span>
+        <input type="text" id="scanInput" placeholder="Enter token contract address..." spellcheck="false">
+        <button id="scanBtn">Scan Token</button>
+      </div>
+      <div class="hero-caption">Powered by on-chain data</div>
+    </div>
+  </section>
+
+  <!-- LIVE DASHBOARD: Pons (real) -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header" style="margin-bottom:24px">
+        <h2>Token Analysis — <span id="previewName">Pons</span> <span id="previewSymbol" style="font-weight:400;color:var(--text3);font-size:14px">($PONS)</span></h2>
+        <span class="more" onclick="document.getElementById('scanInput').focus()">Scan a token →</span>
+      </div>
+
+      <div id="previewDashboard">
+        <!-- Skeleton while loading -->
+        <div class="grid-dashboard">
+          <div>
+            <div class="card" style="margin-bottom:16px"><div class="card-title">Token Overview</div><div class="skeleton" style="height:120px"></div></div>
+            <div class="card" style="margin-bottom:16px"><div class="card-title">Risk Summary</div><div class="skeleton" style="height:100px"></div></div>
+            <div class="card" style="margin-bottom:16px"><div class="card-title">Developer</div><div class="skeleton" style="height:100px"></div></div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:16px"><div class="card-title">Holder Analysis</div><div class="skeleton" style="height:100px"></div></div>
+            <div class="card" style="margin-bottom:16px"><div class="card-title">Social</div><div class="skeleton" style="height:80px"></div></div>
+            <div class="card"><div class="card-title">Funding Sources</div><div class="skeleton" style="height:80px"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===== PAGE: EXPLORER ===== -->
+<div class="page" id="pageExplorer">
+  <div class="container" style="max-width:860px">
+    <div class="doc-page">
+      <h1>Explorer</h1>
+      <p class="sub">Recently scanned tokens on Ponscan.</p>
+      <div id="explorerList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: DOCS ===== -->
+<div class="page" id="pageDocs">
+  <div class="container">
+    <div class="doc-page">
+      <h1>Ponscan Docs</h1>
+      <p class="sub">Token intelligence for the Robinhood Chain — how it works, what we check, and how to use it.</p>
+
+      <div class="doc-section">
+        <h2>How scanning works</h2>
+        <div class="step-flow">
+          <div class="step"><span class="n">1</span>Enter token address</div><span class="arrow">→</span>
+          <div class="step"><span class="n">2</span>Ponscan analyzes it</div><span class="arrow">→</span>
+          <div class="step"><span class="n">3</span>Dev &amp; funding traced</div><span class="arrow">→</span>
+          <div class="step"><span class="n">4</span>Risk assessment</div>
+        </div>
+        <p>Paste any contract address into the scanner. Ponscan pulls on-chain data in real time from the Robinhood Chain RPC, Blockscout, rh-scan, and DexScreener, then compiles it into a full intelligence report.</p>
+      </div>
+
+      <div class="doc-section">
+        <h2>What we analyze</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="icon">💼</div><h3>Developer</h3><p>Dev wallet, EOA/contract type, token &amp; ETH balance, USD worth, on-chain activity, and sell history.</p></div>
+          <div class="feature-card"><div class="icon">💸</div><h3>Funding Sources</h3><p>Trace where the developer wallet received its initial funding — the origin address and transaction.</p></div>
+          <div class="feature-card"><div class="icon">👥</div><h3>Holders</h3><p>Holder count, top-10 distribution, concentration risk, and whale exposure.</p></div>
+          <div class="feature-card"><div class="icon">🔐</div><h3>Contract</h3><p>Verification status, code size, implementation proxy, and Pons buy/sell fee structure.</p></div>
+          <div class="feature-card"><div class="icon">🐦</div><h3>Socials</h3><p>X/Twitter handles associated with the token, plus direct links to the launchpad and DEX.</p></div>
+          <div class="feature-card"><div class="icon">🛡️</div><h3>Risk Score</h3><p>Weighted score (0–99) combining verification, liquidity, holder count, dev behavior, and sell activity.</p></div>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <h2>Risk score methodology</h2>
+        <p>The trust score starts at 55 and adjusts based on on-chain signals:</p>
+        <table class="doc-table">
+          <tr><th>Signal</th><th>Impact</th></tr>
+          <tr><td>Contract verified</td><td>+15</td></tr>
+          <tr><td>Holder count &gt; 20</td><td>+10</td></tr>
+          <tr><td>Holder count 5–20</td><td>+5</td></tr>
+          <tr><td>Liquidity &gt; $5,000</td><td>+10</td></tr>
+          <tr><td>Liquidity $1,000–$5,000</td><td>+5</td></tr>
+          <tr><td>Dev wallet is EOA (not contract)</td><td>+5</td></tr>
+          <tr><td>Dev holds token balance</td><td>−20</td></tr>
+          <tr><td>Dev sell detected</td><td>−25</td></tr>
+        </table>
+        <p><b>82–99</b> = Low Risk · <b>45–81</b> = Medium Risk · <b>10–44</b> = High Risk</p>
+      </div>
+
+      <div class="doc-section">
+        <h2>Data sources</h2>
+        <table class="doc-table">
+          <tr><th>Source</th><th>Used for</th></tr>
+          <tr><td>Robinhood Chain RPC (<code>rpc.mainnet.chain.robinhood.com</code>)</td><td>Token metadata, balances, transfer logs, deployer</td></tr>
+          <tr><td>Blockscout</td><td>Contract verification, holders, creation tx</td></tr>
+          <tr><td>rh-scan</td><td>Dev funding trace (<code>fundedBy</code>), token holdings, ETH balance</td></tr>
+          <tr><td>DexScreener</td><td>Price, liquidity, FDV, volume, 24h change</td></tr>
+          <tr><td>Pons Launchpad</td><td>Token logo (IPFS), launchpad link</td></tr>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h2>Developer API</h2>
+        <p>Every scan runs through a single endpoint. It's open — no API key required.</p>
+        <table class="doc-table">
+          <tr><th>Endpoint</th><th>Description</th></tr>
+          <tr><td><code>/scan?ca=0x...</code></td><td>Full token intelligence report (JSON)</td></tr>
+        </table>
+        <p>Results are cached for 5 minutes, so repeat scans are instant.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: ABOUT ===== -->
+<div class="page" id="pageAbout">
+  <div class="container">
+    <div class="doc-page">
+      <h1>About Ponscan</h1>
+      <p class="sub">A serious analytics tool for the Robinhood Chain — built for people who check before they buy.</p>
+
+      <div class="doc-section">
+        <p>Ponscan is a token intelligence platform. Enter any contract address and get a full breakdown: who deployed it, where the developer got their funding, what they still hold, whether they've sold, how the supply is distributed, and an overall risk score.</p>
+        <p>It's built for the Robinhood Chain ecosystem — the home of Pons launchpad projects and thousands of community tokens. No wallets are connected, no personal data is collected, and everything you see comes from public on-chain data.</p>
+      </div>
+
+      <div class="doc-section">
+        <h2>Why "Scan Before You Buy"</h2>
+        <p>Most losses in crypto come from buying first and researching never. Ponscan flips the order: check the developer's history, trace their funding, verify the socials, and see how concentrated the holders are — before your money ever touches the chain.</p>
+      </div>
+
+      <div class="doc-section">
+        <h2>What makes Ponscan different</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="icon">🎯</div><h3>Dev-focused</h3><p>We treat the developer as the primary risk surface — their wallet, holdings, funding, and sell behavior.</p></div>
+          <div class="feature-card"><div class="icon">⛓️</div><h3>Real on-chain data</h3><p>No guesswork. Every number comes from the Robinhood Chain, Blockscout, rh-scan, and DexScreener.</p></div>
+          <div class="feature-card"><div class="icon">⚡</div><h3>Fast &amp; free</h3><p>Full scans in seconds, cached for instant repeat lookups. No account, no API key, no paywall.</p></div>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <h2>Disclaimer</h2>
+        <p>Ponscan is an analytics tool, not financial advice. Risk scores are heuristic and may miss sophisticated patterns. Always do your own research (DYOR) before trading.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RESULT PAGE (hidden until scan) ===== -->
+<div class="page" id="resultPage">
+  <div class="container">
+    <!-- Token Header -->
+    <div class="token-header" id="tokenHeader">
+      <div class="token-logo" id="tokenLogo">P</div>
+      <div class="token-info">
+        <div class="name">
+          <span id="tokenName">Token Name</span>
+          <span class="symbol" id="tokenSymbol">$SYMBOL</span>
+          <span class="badge badge-outline" id="tokenChain">Robinhood</span>
+        </div>
+        <div class="ca-info">
+          <span class="addr" id="tokenCa" onclick="copyText(this.dataset.ca)">0x0000...0000 <span class="copy">📋</span></span>
+          <span class="badge badge-green" id="tokenVerified" style="display:none">✓ Verified</span>
+        </div>
+      </div>
+      <div class="risk-circle" id="resultRiskCircle">
+        <div class="num" id="resultRiskNum">--</div>
+        <div class="label" id="resultRiskLabel">--</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="funding">Funding</div>
+      <div class="tab" data-tab="developer">Developer</div>
+      <div class="tab" data-tab="holders">Holders</div>
+      <div class="tab" data-tab="contract">Contract</div>
+      <div class="tab" data-tab="socials">Socials</div>
+    </div>
+
+    <!-- Tab: Overview -->
+    <div class="tab-content active" id="tabOverview">
+      <div class="grid-dashboard">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Token Overview</div>
+            <div class="grid-2" style="gap:12px">
+              <div><div class="card-label">Name</div><div class="card-value" id="ovName">--</div></div>
+              <div><div class="card-label">Symbol</div><div class="card-value" id="ovSymbol">--</div></div>
+              <div><div class="card-label">Market Cap</div><div class="card-value" id="ovMcap">--</div></div>
+              <div><div class="card-label">Liquidity</div><div class="card-value" id="ovLiq">--</div></div>
+              <div><div class="card-label">Holders</div><div class="card-value" id="ovHolders">--</div></div>
+              <div><div class="card-label">24h Volume</div><div class="card-value" id="ovVol">--</div></div>
+              <div><div class="card-label">24h Change</div><div class="card-value" id="ovChange">--</div></div>
+              <div><div class="card-label">Total Supply</div><div class="card-value" id="ovSupply">--</div></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Risk Summary</div>
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+              <div class="risk-circle" id="riskCircleDetail"><div class="num">--</div><div class="label">--</div></div>
+              <div style="flex:1">
+                <div class="bar-label"><span>Trust Score</span><span id="trustScoreLabel">-- / 100</span></div>
+                <div class="bar-track"><div class="bar-fill" id="trustScoreBar" style="width:0%"></div></div>
+                <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+                  <div><div class="card-label">Liquidity</div><div class="card-value small" id="ovLiq2">--</div></div>
+                  <div><div class="card-label">Holders</div><div class="card-value small" id="ovHolders2">--</div></div>
+                  <div><div class="card-label">Verified</div><div class="card-value small" id="ovVerified2">--</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Developer</div>
+            <div class="grid-2" style="gap:12px">
+              <div><div class="card-label">Wallet</div><div class="addr" id="ovDevAddr" onclick="copyText(this.dataset.ca)">-- <span class="copy">📋</span></div></div>
+              <div><div class="card-label">Status</div><div id="ovDevStatus">--</div></div>
+              <div><div class="card-label">ETH Balance</div><div class="card-value small" id="ovDevEth">--</div></div>
+              <div><div class="card-label">Token Balance</div><div class="card-value small" id="ovDevToken">--</div></div>
+              <div><div class="card-label">Token Worth</div><div class="card-value small" id="ovDevWorth">--</div></div>
+              <div><div class="card-label">Dev Sell</div><div class="card-value small" id="ovDevSell">--</div></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Social</div>
+            <div id="ovSocials">--</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Funding Sources</div>
+            <div class="funding-tree" id="ovFundingTree">
+              <div style="font-size:13px;color:var(--text3);padding:8px 0">No funding data available</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Funding -->
+    <div class="tab-content" id="tabFunding">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Funding Flow</div>
+          <div class="funding-tree" id="fundingTree"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Funding Details</div>
+          <div id="fundingDetails">
+            <div style="font-size:13px;color:var(--text3)">No funding data available</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Developer -->
+    <div class="tab-content" id="tabDeveloper">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Developer Info</div>
+          <div id="devInfo" class="grid-2" style="gap:12px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dev Activity</div>
+          <div id="devActivity">
+            <div style="font-size:13px;color:var(--text3)">No recent activity</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Holders -->
+    <div class="tab-content" id="tabHolders">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Holder Distribution</div>
+          <div class="holder-bar" id="holderBar"></div>
+          <div class="holder-legend" id="holderLegend"></div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto" id="holderList"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Holder Summary</div>
+          <div id="holderSummary"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Contract -->
+    <div class="tab-content" id="tabContract">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Contract Details</div>
+          <div id="contractDetails" class="grid-2" style="gap:10px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Pons Fee</div>
+          <div id="ponsFee">
+            <div style="font-size:13px;color:var(--text3)">No fee data</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Socials -->
+    <div class="tab-content" id="tabSocials">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">X / Twitter</div>
+          <div id="xHandles"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Links</div>
+          <div id="linksSection"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="module" src="/src/main.js"></script></body></html>

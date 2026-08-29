@@ -684,6 +684,16 @@ const server = createServer(async (req, res) => {
   const { pathname, query } = parse(req.url, true);
   res.setHeader('Access-Control-Allow-Origin', '*');
 
+  // Serve static: frontend/dist first (Vite build), then public/ (legacy)
+  function serveStatic(p) {
+    const rel = p.startsWith('/public/') ? p.slice(8) : p.slice(1);
+    const distPath = join(__dirname_ish, 'frontend', 'dist', rel);
+    if (existsSync(distPath)) return distPath;
+    const publicPath = join(__dirname_ish, 'public', rel);
+    if (existsSync(publicPath)) return publicPath;
+    return null;
+  }
+
   // Static frontend
   const MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -698,7 +708,10 @@ const server = createServer(async (req, res) => {
   };
 
   if (req.method === 'GET' && pathname === '/') {
-    const file = join(__dirname_ish, 'public', 'index.html');
+    // Prefer built Vite dist, fallback to public/ (legacy)
+    const distFile = join(__dirname_ish, 'frontend', 'dist', 'index.html');
+    const publicFile = join(__dirname_ish, 'public', 'index.html');
+    const file = existsSync(distFile) ? distFile : publicFile;
     if (existsSync(file)) {
       res.writeHead(200, { 'Content-Type': MIME['.html'] });
       return res.end(readFileSync(file));
@@ -707,12 +720,11 @@ const server = createServer(async (req, res) => {
     return res.end(JSON.stringify({ name: 'Ponscan API', usage: '/scan?ca=0x...', endpoints: ['/scan'] }));
   }
 
-  if (req.method === 'GET' && (pathname.startsWith('/public/') || ['/logo.png', '/logo-full.png', '/favicon.png'].includes(pathname))) {
-    const file = pathname.startsWith('/public/')
-      ? join(__dirname_ish, 'public', pathname.slice(8))
-      : join(__dirname_ish, 'public', pathname.slice(1));
+  // Static files: serve from frontend/dist/ first, then public/
+  const file = serveStatic(pathname);
+  if (file) {
     const ext = extname(file);
-    if (existsSync(file) && MIME[ext]) {
+    if (MIME[ext]) {
       res.writeHead(200, { 'Content-Type': MIME[ext] });
       return res.end(readFileSync(file));
     }

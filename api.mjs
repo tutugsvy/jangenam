@@ -269,7 +269,7 @@ async function findDeployBlock(ca, creationInfo) {
   let guard = 0;
   while (hi > CHUNK && guard++ < 40) {
     const lo = Math.max(1, hi - CHUNK);
-    const logs = await getLogs(lo, hi, ca, [[transferTopic, zeroTopic]]);
+    const logs = await getLogs(lo, hi, ca, [transferTopic, zeroTopic]);
     if (logs.length) {
       found = logs[0];
       break;
@@ -326,39 +326,46 @@ async function scan(ca) {
   let dev = null;
   let devLabel = 'unknown';
 
-  // Try Pons v2 deployer first
+  // Collect candidates: Pons v2 deployer, Blockscout creator, mint-log first minter
   const ponsDeployerAddr = await ponsDeployer(ca);
-  if (ponsDeployerAddr) {
-    dev = ponsDeployerAddr;
-    devLabel = 'pons-v2-deployer';
-  }
-
-  // Fallback: Blockscout creator
-  if (!dev && creationInfo?.contractCreator) {
-    dev = creationInfo.contractCreator;
-    devLabel = creationInfo.creatorImplementationHash ? 'factory' : 'eoa';
-  }
-
-  // Try mint-log first minter
   const deployInfo = await findDeployBlock(ca, creationInfo);
-  if (deployInfo?.firstMinter && !dev) {
-    dev = deployInfo.firstMinter;
-    devLabel = 'first-minter';
+
+  const candidates = [];
+  if (ponsDeployerAddr) candidates.push({ addr: ponsDeployerAddr, label: 'pons-v2-deployer' });
+  if (creationInfo?.contractCreator) {
+    candidates.push({ addr: creationInfo.contractCreator, label: creationInfo.creatorImplementationHash ? 'factory' : 'eoa-creator' });
+  }
+  if (deployInfo?.firstMinter && !candidates.some(c => c.addr.toLowerCase() === deployInfo.firstMinter.toLowerCase())) {
+    candidates.push({ addr: deployInfo.firstMinter, label: 'first-minter' });
+  }
+
+  // Pick the best candidate: prefer EOA with actual token balance, then any EOA, then first
+  let best = null;
+  for (const c of candidates) {
+    const code = await getCode(c.addr);
+    const isContract = code && code.length > 4;
+    const balHex = await call(ca, S.balanceOf, c.addr);
+    const bal = balHex ? decodeUint(balHex) : null;
+    const balNum = bal ? BigInt(bal) : 0n;
+    const score = (!isContract ? 100 : 0) + (balNum > 0n ? 50 : 0) + (balNum > 0n ? Math.min(50, Number(balNum) > 0 ? 20 : 0) : 0);
+    if (!best || score > best.score) best = { ...c, score, isContract, bal };
+  }
+
+  if (best) {
+    dev = best.addr;
+    devLabel = best.label;
+    result.devIsContract = best.isContract;
+    result.devBalance = best.bal;
   }
 
   result.dev = dev;
   result.devLabel = devLabel;
   result.deployInfo = deployInfo;
 
-  // Check if dev is EOA or contract
+  // Dev balance + ETH balance
   if (dev) {
-    const devCode = await getCode(dev);
-    result.devIsContract = devCode && devCode.length > 4;
-    // Dev balance
-    const balHex = await call(ca, S.balanceOf, dev);
-    result.devBalance = decodeUint(balHex);
     // Dev balance formatted (no precision loss)
-    result.devBalanceFormatted = formatTokenAmount(result.devBalance, result.decimals);
+    result.devBalanceFormatted = result.devBalance != null ? formatTokenAmount(result.devBalance, result.decimals) : null;
     // Dev ETH balance
     const ethBal = await client.request({ method: 'eth_getBalance', params: [dev, 'latest'] });
     result.devEthBalance = formatTokenAmount(ethBal, 18);
@@ -399,9 +406,15 @@ async function scan(ca) {
   const ponsIcon = await ponsLogo(ca);
   result.tokenIcon = ponsIcon || result.blockscout?.iconUrl || null;
 
-  // 12. Dev funding trace
+  // 12. Dev funding trace + dev sell detection + dev USD worth
   if (dev) {
     result.devFunding = await traceFunding(dev);
+    const price = result.dex?.priceUsd ? parseFloat(result.dex.priceUsd) : null;
+    // Dev USD worth
+    if (result.devBalanceFormatted != null && price != null) {
+      result.devWorthUsd = '$' + (Number(result.devBalanceFormatted) * price).toFixed(2);
+    }
+    result.devActivity = await traceDevActivity(ca, dev, Number(result.decimals || 18), price, result.symbol);
   }
 
   return result;
@@ -418,6 +431,49 @@ async function ponsLogo(ca) {
     const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
       || html.match(/content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
     return m ? m[1] : null;
+  } catch { return null; }
+}
+
+// Dev sell/activity trace — check token Transfer logs from dev wallet
+async function traceDevActivity(ca, dev, decimals, priceUsd, symbol) {
+  if (!dev) return null;
+  const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const fromTopic = '0x000000000000000000000000' + dev.slice(2).toLowerCase();
+  try {
+    // Latest block
+    const current = await client.request({ method: 'eth_blockNumber', params: [] });
+    const toBlock = parseInt(current, 16);
+    const fromBlock = Math.max(1, toBlock - 100000); // ~recent window (adjustable)
+    const logs = await getLogs(fromBlock, toBlock, ca, [transferTopic, fromTopic]);
+    if (!logs.length) return null;
+
+    // Classify transfers: to 0x0 = burn, to router/pair = sell, else transfer
+    const activities = logs.slice(0, 20).map(l => {
+      const to = '0x' + (l.topics[3] || '').slice(26);
+      const val = formatTokenAmount(BigInt(l.data), decimals);
+      const usd = priceUsd ? Number(val) * Number(priceUsd) : null;
+      let type = 'transfer';
+      if (to === '0x0000000000000000000000000000000000000000') type = 'burn';
+      else if (usd != null && usd > 1) type = 'sell'; // heuristic: >$1 outbound = sell
+      return {
+        type, to, value: val, usd: usd != null ? usd.toFixed(4) : null,
+        tx: l.transactionHash, block: parseInt(l.blockNumber, 16),
+      };
+    });
+
+    const sells = activities.filter(a => a.type === 'sell');
+    const totalSellTokens = sells.reduce((s, a) => s + (Number(a.value) || 0), 0);
+    const totalSellUsd = sells.reduce((s, a) => s + (Number(a.usd) || 0), 0);
+
+    return {
+      devSell: sells.length > 0,
+      sells: sells.slice(0, 5),
+      totalSellCount: sells.length,
+      totalSellTokens: formatTokenAmount(BigInt(Math.floor(totalSellTokens * 10**18)), 18),
+      totalSellUsd: totalSellUsd ? '$' + totalSellUsd.toFixed(2) : null,
+      latestActivity: activities[0] || null,
+      activityCount: activities.length,
+    };
   } catch { return null; }
 }
 

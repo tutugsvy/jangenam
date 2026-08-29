@@ -12,8 +12,26 @@ const RH = 'https://rpc.mainnet.chain.robinhood.com';
 const BS = 'https://robinhoodchain.blockscout.com';
 const BLOCKSCOUT = `${BS}/api`;
 const BLOCKSCOUT_V2 = `${BS}/api/v2`;
+const RHSCAN = 'https://rh-scan.com';
 
-const client = createPublicClient({ transport: http(RH) });
+const client = createPublicClient({ transport: http(RH, { timeout: 10000 }) });
+
+// Tiny timing helper
+const timing = {};
+function tic(k){ timing[k] = Date.now(); }
+function toc(k){ if(timing[k]) timing[k + '_ms'] = (Date.now() - timing[k]); }
+
+// In-memory scan cache (5 min TTL) — makes landing/auto-loads instant
+const scanCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000;
+async function cachedScan(ca) {
+  const key = ca.toLowerCase();
+  const hit = scanCache.get(key);
+  if (hit && Date.now() - hit.t < CACHE_TTL) return hit.d;
+  const d = await scan(getAddress(ca));
+  scanCache.set(key, { d, t: Date.now() });
+  return d;
+}
 
 function bsFetch(url) {
   return fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } });
@@ -288,8 +306,10 @@ async function findDeployBlock(ca, creationInfo) {
 // ====== MAIN SCAN ======
 async function scan(ca) {
   const result = { ca, timestamp: Date.now() };
+  tic('total');
 
   // 1. Token basics
+  tic('basics');
   const [nameHex, symHex, decHex, supplyHex] = await Promise.all([
     call(ca, S.name), call(ca, S.symbol),
     call(ca, S.decimals), call(ca, S.totalSupply),
@@ -298,13 +318,17 @@ async function scan(ca) {
   result.symbol = decodeString(symHex);
   result.decimals = decodeUint(decHex);
   result.totalSupply = decodeUint(supplyHex);
+  toc('basics');
 
   // 2. Code size
+  tic('code');
   const code = await getCode(ca);
   result.codeSize = code ? (code.length - 2) / 2 : 0;
   result.hasCode = (result.codeSize || 0) > 0;
+  toc('code');
 
   // 3. Blockscout token info
+  tic('blockscout');
   const [bs, bsV1, contract, creation] = await Promise.all([
     bsToken(ca), bsTokenV1(ca), bsContract(ca), bsCreation(ca)
   ]);
@@ -316,19 +340,21 @@ async function scan(ca) {
     totalSupplyOffChain: bs?.total_supply || bsV1?.total_supply || null,
     iconUrl: bs?.icon_url || null,
   } : null;
-
-  // 4. Smart contract verified
   result.verified = contract?.is_verified || false;
   result.implementation = contract?.implementation?.address || null;
+  toc('blockscout');
 
-  // 5. Deployer / Dev
+  // 4. Deployer / Dev
+  tic('dev');
   const creationInfo = creation;
   let dev = null;
   let devLabel = 'unknown';
 
   // Collect candidates: Pons v2 deployer, Blockscout creator, mint-log first minter
-  const ponsDeployerAddr = await ponsDeployer(ca);
-  const deployInfo = await findDeployBlock(ca, creationInfo);
+  const [ponsDeployerAddr, deployInfo] = await Promise.all([
+    ponsDeployer(ca),
+    findDeployBlock(ca, creationInfo),
+  ]);
 
   const candidates = [];
   if (ponsDeployerAddr) candidates.push({ addr: ponsDeployerAddr, label: 'pons-v2-deployer' });
@@ -339,16 +365,19 @@ async function scan(ca) {
     candidates.push({ addr: deployInfo.firstMinter, label: 'first-minter' });
   }
 
-  // Pick the best candidate: prefer EOA with actual token balance, then any EOA, then first
+  // Pick the best candidate: parallel checks
   let best = null;
-  for (const c of candidates) {
+  const scored = await Promise.all(candidates.map(async c => {
     const code = await getCode(c.addr);
     const isContract = code && code.length > 4;
     const balHex = await call(ca, S.balanceOf, c.addr);
     const bal = balHex ? decodeUint(balHex) : null;
     const balNum = bal ? BigInt(bal) : 0n;
-    const score = (!isContract ? 100 : 0) + (balNum > 0n ? 50 : 0) + (balNum > 0n ? Math.min(50, Number(balNum) > 0 ? 20 : 0) : 0);
-    if (!best || score > best.score) best = { ...c, score, isContract, bal };
+    const score = (!isContract ? 100 : 0) + (balNum > 0n ? 50 : 0);
+    return { ...c, score, isContract, bal };
+  }));
+  for (const s of scored) {
+    if (!best || s.score > best.score) best = s;
   }
 
   if (best) {
@@ -361,61 +390,148 @@ async function scan(ca) {
   result.dev = dev;
   result.devLabel = devLabel;
   result.deployInfo = deployInfo;
+  toc('dev');
 
   // Dev balance + ETH balance
+  tic('devBal');
   if (dev) {
-    // Dev balance formatted (no precision loss)
     result.devBalanceFormatted = result.devBalance != null ? formatTokenAmount(result.devBalance, result.decimals) : null;
-    // Dev ETH balance
     const ethBal = await client.request({ method: 'eth_getBalance', params: [dev, 'latest'] });
     result.devEthBalance = formatTokenAmount(ethBal, 18);
   }
+  toc('devBal');
 
-  // 6. Top holders
-  let holders = await bsHolders(ca);
-  let holdersV1 = null;
-  if (!holders) {
-    holdersV1 = await bsHoldersV1(ca);
-  }
-  const holderList = holders || holdersV1 || [];
-  if (holderList.length) {
-    result.topHolders = holderList.slice(0, 10).map(h => ({
+  // 6-14: Everything else in parallel
+  tic('rest');
+  const [holders, fee, pair, dex, xHandles, ponsIcon, devProfileData, devActivity] = await Promise.all([
+    (async () => {
+      let h = await bsHolders(ca);
+      if (!h) h = await bsHoldersV1(ca);
+      return h || [];
+    })(),
+    ponsFee(ca),
+    v2Pair(ca),
+    dexScreener(ca),
+    searchX(ca, result.symbol),
+    ponsLogo(ca),
+    dev ? devProfile(dev) : Promise.resolve(null),
+    dev ? traceDevActivity(ca, dev, Number(result.decimals || 18), null, result.symbol) : Promise.resolve(null),
+  ]);
+  toc('rest');
+
+  // Process holders
+  if (holders.length) {
+    result.topHolders = holders.slice(0, 10).map(h => ({
       address: h.address?.hash || h.address || h,
       value: h.value,
       percentage: result.totalSupply && h.value ?
         formatTokenAmount(BigInt(h.value) * 10000n / BigInt(result.totalSupply) * 100n, 4) + '%' : null,
     }));
-    result.holderCount = holderList.length;
+    result.holderCount = holders.length;
   }
-
-  // 7. Pons fees
-  const fee = await ponsFee(ca);
   result.ponsFee = fee;
-
-  // 8. Uniswap V2 pair
-  const pair = await v2Pair(ca);
   result.v2Pair = pair;
-
-  // 9. DexScreener
-  result.dex = await dexScreener(ca);
-
-  // 10. X handle search
-  result.xHandles = await searchX(ca, result.symbol);
-
-  // 11. Token logo (from Pons launchpad > Blockscout > DexScreener)
-  const ponsIcon = await ponsLogo(ca);
+  result.dex = dex;
+  result.xHandles = xHandles;
   result.tokenIcon = ponsIcon || result.blockscout?.iconUrl || null;
 
-  // 12. Dev funding trace + dev sell detection + dev USD worth
-  if (dev) {
-    result.devFunding = await traceFunding(dev);
-    const price = result.dex?.priceUsd ? parseFloat(result.dex.priceUsd) : null;
-    // Dev USD worth
+  // Dev profile: funding, holdings, eth balance via rh-scan
+  if (devProfileData) {
+    // Funding from rh-scan moreinfo
+    const mi = devProfileData.moreinfo;
+    result.devFunding = (mi?.fundedBy?.address) ? {
+      fundedBy: mi.fundedBy.address,
+      fundedTx: mi.fundedBy.hash || null,
+      fundedAtTime: mi.fundedBy.timestamp || null,
+      source: 'rh-scan',
+      txSent: mi.txSent || null,
+    } : null;
+
+    // ETH balance from rh-scan core (skip RPC call)
+    if (devProfileData.core?.ethBalance) {
+      result.devEthBalance = formatTokenAmount(devProfileData.core.ethBalance, 18);
+    }
+
+    // Dev holdings — list of tokens with balance + worth
+    if (devProfileData.holdings?.holdings?.length) {
+      const allHoldings = devProfileData.holdings.holdings;
+      // Find the scanned token in holdings
+      const scannedHolding = allHoldings.find(h => h.token.toLowerCase() === ca.toLowerCase());
+      if (scannedHolding) {
+        result.devBalanceFormatted = formatTokenAmount(scannedHolding.balance, scannedHolding.decimals);
+        result.devBalance = scannedHolding.balance;
+      }
+
+      // Price for top holdings (up to 10, via DexScreener batch)
+      const price = dex?.priceUsd ? parseFloat(dex.priceUsd) : null;
+      const topByBal = allHoldings
+        .sort((a,b) => BigInt(b.balance) - BigInt(a.balance))
+        .slice(0, 10);
+
+      // Get prices for all holding tokens in one batch call
+      const holdCAs = topByBal.map(h => h.token).join(',');
+      let dexPrices = {};
+      try {
+        const dp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${holdCAs}`, { headers: { 'User-Agent': UA } });
+        const dpJson = await dp.json();
+        if (dpJson.pairs) {
+          // Group by token address, take highest liquidity pair price
+          for (const pair of dpJson.pairs) {
+            const tAddr = pair.baseToken?.address?.toLowerCase() || pair.quoteToken?.address?.toLowerCase();
+            if (tAddr) {
+              if (!dexPrices[tAddr] || (pair.liquidity?.usd || 0) > (dexPrices[tAddr].liq || 0)) {
+                dexPrices[tAddr] = { price: parseFloat(pair.priceUsd || 0), liq: pair.liquidity?.usd || 0, pairUrl: pair.url };
+              }
+            }
+          }
+        }
+      } catch {}
+
+      let totalWorth = 0;
+      result.devHoldings = topByBal.map(h => {
+        const bal = formatTokenAmount(h.balance, h.decimals);
+        const p = dexPrices[h.token.toLowerCase()]?.price || 0;
+        const w = p && bal ? Number(bal) * p : 0;
+        totalWorth += w;
+        return {
+          token: h.token,
+          symbol: h.symbol,
+          name: h.name,
+          balance: bal,
+          priceUsd: p || null,
+          worthUsd: w > 0 ? '$' + w.toFixed(2) : null,
+        };
+      });
+      // Calculate scanned token worth separately
+      if (result.devBalanceFormatted != null && price != null) {
+        totalWorth += Number(result.devBalanceFormatted) * price;
+      }
+      result.devTotalWorthUsd = totalWorth > 0 ? '$' + totalWorth.toFixed(2) : null;
+    }
+  }
+
+  // Dev USD worth + activity (needs price from dex)
+  if (dev && devActivity) {
+    const price = dex?.priceUsd ? parseFloat(dex.priceUsd) : null;
     if (result.devBalanceFormatted != null && price != null) {
       result.devWorthUsd = '$' + (Number(result.devBalanceFormatted) * price).toFixed(2);
     }
-    result.devActivity = await traceDevActivity(ca, dev, Number(result.decimals || 18), price, result.symbol);
+    // Reclassify sells with actual price
+    if (price && devActivity.sells) {
+      devActivity.sells = devActivity.sells.map(s => ({
+        ...s,
+        usd: (Number(s.value) * price).toFixed(4),
+      }));
+      devActivity.totalSellUsd = devActivity.sells.reduce((s,a) => s + Number(a.usd), 0);
+      devActivity.totalSellUsd = devActivity.totalSellUsd ? '$' + devActivity.totalSellUsd.toFixed(2) : null;
+    }
+    result.devActivity = devActivity;
   }
+
+  toc('total');
+  result.timing = { ...timing };
+  // Clear for next scan
+  Object.keys(timing).forEach(k => delete timing[k]);
 
   return result;
 }
@@ -440,6 +556,14 @@ async function traceDevActivity(ca, dev, decimals, priceUsd, symbol) {
   const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
   const fromTopic = '0x000000000000000000000000' + dev.slice(2).toLowerCase();
   try {
+    // If no price provided, fetch it so sell detection works
+    let price = priceUsd;
+    if (price == null) {
+      try {
+        const d = await dexScreener(ca);
+        price = d?.priceUsd ? parseFloat(d.priceUsd) : null;
+      } catch {}
+    }
     // Latest block
     const current = await client.request({ method: 'eth_blockNumber', params: [] });
     const toBlock = parseInt(current, 16);
@@ -451,7 +575,7 @@ async function traceDevActivity(ca, dev, decimals, priceUsd, symbol) {
     const activities = logs.slice(0, 20).map(l => {
       const to = '0x' + (l.topics[3] || '').slice(26);
       const val = formatTokenAmount(BigInt(l.data), decimals);
-      const usd = priceUsd ? Number(val) * Number(priceUsd) : null;
+      const usd = price ? Number(val) * Number(price) : null;
       let type = 'transfer';
       if (to === '0x0000000000000000000000000000000000000000') type = 'burn';
       else if (usd != null && usd > 1) type = 'sell'; // heuristic: >$1 outbound = sell
@@ -477,12 +601,29 @@ async function traceDevActivity(ca, dev, decimals, priceUsd, symbol) {
   } catch { return null; }
 }
 
-// Dev funding trace — check where the dev wallet got its first ETH
+// Dev funding trace — via rh-scan API (fast, authoritative). Fallback: Blockscout.
 async function traceFunding(dev) {
   try {
-    // Use Blockscout v1 txlist to find earliest incoming txs
-    const res = await bsFetch(`${BLOCKSCOUT}?module=account&action=txlist&address=${dev}&sort=asc&limit=30`);
-    const json = await res.json();
+    const res = await rhFetch(`${RHSCAN}/api/address/${dev}/moreinfo`);
+    if (res) {
+      const fb = res.fundedBy;
+      if (fb && fb.address) {
+        return {
+          fundedBy: fb.address,
+          fundedTx: fb.hash || null,
+          fundedAtTime: fb.timestamp || null,
+          fundedByUnavailable: !!res.fundedByUnavailable,
+          source: 'rh-scan',
+          txSent: res.txSent || null,
+        };
+      }
+    }
+  } catch { /* fall through to Blockscout */ }
+
+  // Fallback: Blockscout v1 txlist — earliest incoming ETH txs
+  try {
+    const bsRes = await bsFetch(`${BLOCKSCOUT}?module=account&action=txlist&address=${dev}&sort=asc&limit=30`);
+    const json = await bsRes.json();
     if (json.status !== '1' || !Array.isArray(json.result)) return null;
 
     const txs = json.result;
@@ -491,7 +632,6 @@ async function traceFunding(dev) {
     ).slice(0, 10);
 
     if (!incoming.length) {
-      // Try internal txs
       const intRes = await bsFetch(`${BLOCKSCOUT}?module=account&action=txlistinternal&address=${dev}&sort=asc&limit=20`);
       const intJson = await intRes.json();
       if (intJson.status === '1' && Array.isArray(intJson.result)) {
@@ -500,6 +640,7 @@ async function traceFunding(dev) {
           totalIncomingTxs: intJson.result.filter(t => t.isError === '0').length,
           firstFrom: intJson.result[0]?.from || null,
           firstValue: intJson.result[0]?.value || null,
+          source: 'blockscout-internal',
         };
       }
       return { fundedBy: 'unknown', note: 'no incoming tx found in top 50' };
@@ -512,10 +653,31 @@ async function traceFunding(dev) {
       fundedTx: incoming[0].hash,
       fundedAtBlock: incoming[0].blockNumber,
       totalIncomingTxs: incoming.length,
-      // Classify the first funder
       firstFunder: incoming[0].from,
       firstFunderNote: 'first ETH inflow to dev wallet',
+      source: 'blockscout',
     };
+  } catch { return null; }
+}
+
+// rh-scan fetch helper — returns parsed JSON or null
+async function rhFetch(path) {
+  try {
+    const res = await fetch(`${RHSCAN}${path}`, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// Dev full on-chain profile via rh-scan: holdings, core (eth), moreinfo (fundedBy)
+async function devProfile(dev) {
+  try {
+    const [core, holdings, moreinfo] = await Promise.all([
+      rhFetch(`${RHSCAN}/api/address/${dev}/core`),
+      rhFetch(`${RHSCAN}/api/address/${dev}/holdings`),
+      rhFetch(`${RHSCAN}/api/address/${dev}/moreinfo`),
+    ]);
+    return { core, holdings, moreinfo };
   } catch { return null; }
 }
 const server = createServer(async (req, res) => {
@@ -561,7 +723,7 @@ const server = createServer(async (req, res) => {
       return res.end(JSON.stringify({ error: 'Invalid or missing CA. Usage: /scan?ca=0x...' }));
     }
     try {
-      const result = await scan(getAddress(ca));
+      const result = await cachedScan(ca);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result, null, 2));
     } catch (e) {
